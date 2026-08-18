@@ -1,0 +1,1077 @@
+/**
+ * CALENDAR.JS - Grade com 3 Turnos Fixos, Drag & Drop Completo e Editor Manual
+ */
+
+const MONTH_NAMES = [
+  'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+  'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+];
+
+class CalendarManager {
+  constructor(store, scheduler) {
+    this.store = store;
+    this.scheduler = scheduler;
+    
+    // Inicia no mês padrão de referência (Agosto de 2026)
+    this.currentYear = 2026;
+    this.currentMonth = 8;
+
+    this.draggedWorker = null;
+    this.hasJustDragged = false;
+
+    this.init();
+  }
+
+  init() {
+    this.bindEvents();
+    this.render();
+  }
+
+  bindEvents() {
+    document.getElementById('btn-prev-month')?.addEventListener('click', () => this.changeMonth(-1));
+    document.getElementById('btn-next-month')?.addEventListener('click', () => this.changeMonth(1));
+    document.getElementById('btn-today')?.addEventListener('click', () => this.goToToday());
+
+    const monthPicker = document.getElementById('month-picker');
+    monthPicker?.addEventListener('change', (e) => {
+      if (e.target.value) {
+        const [year, month] = e.target.value.split('-').map(Number);
+        this.currentYear = year;
+        this.currentMonth = month;
+        this.render();
+      }
+    });
+
+    document.getElementById('filter-employee')?.addEventListener('change', (e) => {
+      this.highlightEmployee(e.target.value);
+    });
+
+    document.getElementById('btn-auto-generate')?.addEventListener('click', () => {
+      this.generateAndSaveCurrentMonth();
+    });
+
+    // Botão Equipe do Mês
+    document.getElementById('btn-month-team')?.addEventListener('click', () => {
+      this.openMonthTeamModal();
+    });
+
+    // Botão Salvar Equipe do Mês
+    document.getElementById('btn-save-month-team')?.addEventListener('click', () => {
+      this.saveMonthTeam();
+    });
+
+    const btnTeam = document.getElementById('btn-manage-team');
+    if (btnTeam) {
+      btnTeam.addEventListener('click', () => {
+        window.employeeManager?.render();
+        window.app?.openModal('modal-team-manager');
+      });
+    }
+
+    document.getElementById('btn-clear-month')?.addEventListener('click', () => {
+      if (confirm(`Deseja realmente limpar toda a escala de ${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}?`)) {
+        const yearMonthKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+        this.store.deleteMonthSchedule(yearMonthKey);
+        this.render();
+        window.app?.showToast('Escala do mês limpa!', 'info');
+      }
+    });
+
+    // Submissão do formulário de edição de turnos
+    document.getElementById('form-edit-slot')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveSlotEdit();
+    });
+
+    // Botão Limpar Dia
+    document.getElementById('btn-clear-day-slots')?.addEventListener('click', () => {
+      const dateKey = document.getElementById('edit-slot-date')?.value;
+      if (dateKey) this.clearDaySlots(dateKey);
+    });
+
+    // Botões para adicionar mais pessoas a um turno específico
+    document.querySelectorAll('.btn-add-person-shift').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const shiftNum = parseInt(btn.dataset.shift, 10);
+        this.appendPersonToShift(shiftNum, '', 'NORMAL');
+      });
+    });
+
+    // Botões de Copiar e Colar na barra flutuante
+    document.getElementById('btn-paste-current-week')?.addEventListener('click', () => {
+      this.pasteToWeekdaysOfWeek();
+    });
+
+    document.getElementById('btn-paste-all-weekdays')?.addEventListener('click', () => {
+      this.pasteToAllWeekdaysOfMonth();
+    });
+
+    document.getElementById('btn-cancel-copy')?.addEventListener('click', () => {
+      this.cancelCopy();
+    });
+
+    // Botões de Copiar e Colar no Modal de Edição do Dia
+    document.getElementById('btn-modal-copy-day')?.addEventListener('click', () => {
+      const dateKey = document.getElementById('edit-slot-date')?.value;
+      if (dateKey) this.copyDaySchedule(dateKey);
+    });
+
+    document.getElementById('btn-modal-paste-day')?.addEventListener('click', () => {
+      if (!this.copiedDayData || !this.copiedDayData.slots) {
+        window.app?.showToast('Nenhum horário copiado.', 'warning');
+        return;
+      }
+      for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+        const container = document.getElementById(`shift-${shiftNum}-workers`);
+        if (container) container.innerHTML = '';
+        const workers = this.copiedDayData.slots[shiftNum - 1] || [];
+        if (workers.length === 0) {
+          this.appendPersonToShift(shiftNum, '', 'NORMAL');
+        } else {
+          workers.forEach(w => {
+            this.appendPersonToShift(shiftNum, w.employeeName, w.color || 'NORMAL');
+          });
+        }
+      }
+      window.app?.showToast(`Horário do dia ${String(this.copiedDayData.dayNumber).padStart(2, '0')} carregado!`, 'info');
+    });
+  }
+
+  changeMonth(delta) {
+    this.currentMonth += delta;
+    if (this.currentMonth > 12) {
+      this.currentMonth = 1;
+      this.currentYear++;
+    } else if (this.currentMonth < 1) {
+      this.currentMonth = 12;
+      this.currentYear--;
+    }
+    this.render();
+  }
+
+  goToToday() {
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
+    this.render();
+  }
+
+  getYearMonthKey() {
+    return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+  }
+
+  generateAndSaveCurrentMonth() {
+    try {
+      const schedule = this.scheduler.generateMonthSchedule(this.currentYear, this.currentMonth);
+      this.store.saveMonthSchedule(this.getYearMonthKey(), schedule);
+      this.render();
+      window.app?.showToast(`Escala de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} gerada!`, 'success');
+    } catch (err) {
+      window.app?.showToast(err.message || 'Erro ao gerar escala', 'error');
+    }
+  }
+
+  getEmptyMonthSchedule(year, month) {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysSchedule = {};
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      daysSchedule[dayKey] = {
+        dayNumber: day,
+        dayOfWeek: date.getDay(),
+        slots: [{ workers: [] }, { workers: [] }, { workers: [] }]
+      };
+    }
+    return {
+      yearMonth: `${year}-${String(month).padStart(2, '0')}`,
+      year: year,
+      month: month,
+      days: daysSchedule
+    };
+  }
+
+  render() {
+    const yearMonthKey = this.getYearMonthKey();
+    const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
+    
+    const displayEl = document.getElementById('current-month-display');
+    if (displayEl) displayEl.textContent = monthTitle;
+    
+    const pickerEl = document.getElementById('month-picker');
+    if (pickerEl) pickerEl.value = yearMonthKey;
+
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    }
+
+    this.renderCalendarGrid(schedule);
+    this.renderFilterOptions();
+    this.renderMonthlyStats(schedule);
+
+    const printableCal = document.getElementById('printable-calendar');
+    if (printableCal) {
+      if (this.store.isAdmin()) {
+        printableCal.classList.add('admin-active');
+      } else {
+        printableCal.classList.remove('admin-active');
+      }
+    }
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  }
+
+  /**
+   * Normaliza os slots de um dia para garantir exatamente 3 turnos sem duplicatas internas
+   */
+  normalizeDaySlots(rawSlots) {
+    const normalized = [[], [], []];
+    if (!rawSlots || !Array.isArray(rawSlots)) return normalized;
+
+    for (let i = 0; i < 3; i++) {
+      const slotData = rawSlots[i];
+      if (!slotData) continue;
+
+      const seenInTurn = new Set();
+
+      if (Array.isArray(slotData)) {
+        slotData.forEach(item => {
+          if (item && item.employeeName && item.employeeName.trim()) {
+            const name = item.employeeName.trim();
+            if (!seenInTurn.has(name)) {
+              seenInTurn.add(name);
+              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+            }
+          }
+        });
+      } else if (slotData.workers && Array.isArray(slotData.workers)) {
+        slotData.workers.forEach(item => {
+          if (item && item.employeeName && item.employeeName.trim()) {
+            const name = item.employeeName.trim();
+            if (!seenInTurn.has(name)) {
+              seenInTurn.add(name);
+              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+            }
+          }
+        });
+      } else if (slotData.employeeName && slotData.employeeName.trim()) {
+        const parts = slotData.employeeName.split('/').map(p => p.trim()).filter(Boolean);
+        parts.forEach(name => {
+          if (!seenInTurn.has(name)) {
+            seenInTurn.add(name);
+            normalized[i].push({ employeeName: name, color: slotData.color || 'NORMAL' });
+          }
+        });
+      }
+    }
+
+    return normalized;
+  }
+
+  renderCalendarGrid(schedule) {
+    const gridEl = document.getElementById('calendar-grid');
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
+
+    const firstDayDate = new Date(this.currentYear, this.currentMonth - 1, 1);
+    const totalDaysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+
+    let firstDayIndex = firstDayDate.getDay() - 1;
+    if (firstDayIndex === -1) firstDayIndex = 6;
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day-cell other-month';
+      gridEl.appendChild(emptyCell);
+    }
+
+    const today = new Date();
+    const isCurrentActualMonth = (today.getFullYear() === this.currentYear && (today.getMonth() + 1) === this.currentMonth);
+
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const rawDayData = (schedule.days && schedule.days[dateKey]) || { dayNumber: day, slots: [] };
+      const normalizedSlots = this.normalizeDaySlots(rawDayData.slots);
+
+      const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
+      const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+      const isToday = isCurrentActualMonth && (today.getDate() === day);
+
+      const isCopiedSource = Boolean(this.copiedDayData && this.copiedDayData.dateKey === dateKey);
+      const hasCopied = Boolean(this.copiedDayData && this.copiedDayData.slots);
+
+      const dayCell = document.createElement('div');
+      dayCell.className = `calendar-day-cell ${isWeekend ? 'is-weekend' : ''} ${isToday ? 'is-today' : ''} ${isCopiedSource ? 'is-copied-source' : ''} ${hasCopied ? 'has-copied-active' : ''}`;
+      dayCell.dataset.dateKey = dateKey;
+
+      // Topbar com Badge do Dia e Ações Rápidas (Copiar / Colar)
+      const topbarEl = document.createElement('div');
+      topbarEl.className = 'day-cell-topbar';
+
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'day-header-badge';
+      dayHeader.textContent = day;
+      topbarEl.appendChild(dayHeader);
+
+      if (this.store.isAdmin()) {
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'day-cell-actions';
+
+        const btnCopy = document.createElement('button');
+        btnCopy.type = 'button';
+        btnCopy.className = 'btn-day-action btn-copy-day';
+        btnCopy.title = `Copiar horários do dia ${day}`;
+        btnCopy.innerHTML = '<i data-lucide="copy"></i>';
+        btnCopy.addEventListener('click', (e) => this.copyDaySchedule(dateKey, e));
+        actionsEl.appendChild(btnCopy);
+
+        const btnPaste = document.createElement('button');
+        btnPaste.type = 'button';
+        btnPaste.className = `btn-day-action btn-paste-day ${hasCopied ? '' : 'disabled'}`;
+        btnPaste.title = hasCopied ? `Colar horário do dia ${this.copiedDayData.dayNumber} aqui` : 'Nenhum horário copiado ainda';
+        btnPaste.innerHTML = '<i data-lucide="clipboard-paste"></i>';
+        btnPaste.addEventListener('click', (e) => this.pasteDaySchedule(dateKey, e));
+        actionsEl.appendChild(btnPaste);
+
+        topbarEl.appendChild(actionsEl);
+      }
+
+      dayCell.appendChild(topbarEl);
+
+      const slotsContainer = document.createElement('div');
+      slotsContainer.className = 'day-slots-container';
+
+      // Renderiza exatamente os 3 turnos
+      for (let turnIndex = 0; turnIndex < 3; turnIndex++) {
+        const workersInTurn = normalizedSlots[turnIndex];
+        const slotEl = document.createElement('div');
+        slotEl.dataset.turnIndex = turnIndex;
+        slotEl.dataset.dateKey = dateKey;
+
+        if (workersInTurn.length === 0) {
+          slotEl.className = 'slot-item empty-slot';
+          slotEl.innerHTML = '<span class="empty-dash">——————</span>';
+        } else {
+          slotEl.className = 'slot-item slot-turn-multi';
+
+          const chipsElements = workersInTurn.map((w, wIdx) => {
+            const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
+            return `<span class="worker-chip ${colorClass}" draggable="${this.store.isAdmin()}" data-emp="${w.employeeName}" data-color="${w.color || 'NORMAL'}" data-widx="${wIdx}" data-turn="${turnIndex}" data-date="${dateKey}">${w.employeeName}</span>`;
+          }).join('<span class="slot-slash">/</span>');
+
+          slotEl.innerHTML = chipsElements;
+        }
+
+        // Habilita Drag & Drop nos slots se for Admin
+        if (this.store.isAdmin()) {
+          this.attachSlotDragAndDrop(slotEl, dateKey, turnIndex);
+        }
+
+        slotsContainer.appendChild(slotEl);
+      }
+
+      dayCell.appendChild(slotsContainer);
+
+      // Clique no dia para abrir edição manual
+      dayCell.addEventListener('click', (e) => {
+        if (this.store.isAdmin()) {
+          if (this.hasJustDragged) {
+            this.hasJustDragged = false;
+            return;
+          }
+          this.openEditSlotModal(dateKey, rawDayData);
+        }
+      });
+
+      gridEl.appendChild(dayCell);
+    }
+
+    const totalRenderedCells = firstDayIndex + totalDaysInMonth;
+    const targetTotalCells = totalRenderedCells > 35 ? 42 : 35;
+    const remainingCells = targetTotalCells - totalRenderedCells;
+    for (let i = 0; i < remainingCells; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day-cell other-month';
+      gridEl.appendChild(emptyCell);
+    }
+  }
+
+  /**
+   * Configuração de Arrastar e Soltar (Drag & Drop) entre turnos e dias
+   */
+  attachSlotDragAndDrop(slotEl, dateKey, turnIndex) {
+    // 1. Arrastar os nomes (Worker Chips)
+    const chips = slotEl.querySelectorAll('.worker-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        this.draggedWorker = {
+          dateKey: chip.dataset.date,
+          turnIndex: parseInt(chip.dataset.turn, 10),
+          workerIndex: parseInt(chip.dataset.widx, 10),
+          employeeName: chip.dataset.emp,
+          color: chip.dataset.color
+        };
+        chip.classList.add('chip-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', chip.dataset.emp);
+      });
+
+      chip.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        chip.classList.remove('chip-dragging');
+        document.querySelectorAll('.slot-item').forEach(s => s.classList.remove('slot-drag-hover', 'slot-drag-group'));
+        setTimeout(() => { this.draggedWorker = null; }, 50);
+      });
+    });
+
+    // 2. Soltar no Turno (Slot)
+    slotEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (e.shiftKey) {
+        slotEl.classList.add('slot-drag-group');
+        slotEl.classList.remove('slot-drag-hover');
+      } else {
+        slotEl.classList.add('slot-drag-hover');
+        slotEl.classList.remove('slot-drag-group');
+      }
+    });
+
+    slotEl.addEventListener('dragleave', (e) => {
+      e.stopPropagation();
+      slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+    });
+
+    slotEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+
+      if (!this.draggedWorker) return;
+
+      this.hasJustDragged = true;
+      const targetDateKey = slotEl.dataset.dateKey;
+      const targetTurnIndex = parseInt(slotEl.dataset.turnIndex, 10);
+      const isGrouping = !!e.shiftKey;
+
+      this.moveOrSwapWorker(this.draggedWorker, targetDateKey, targetTurnIndex, isGrouping);
+    });
+  }
+
+  /**
+   * Executa a inversão/troca (SWAP padrão) ou Agrupamento (com SHIFT) de turno/dia ao arrastar
+   */
+  moveOrSwapWorker(source, targetDateKey, targetTurnIndex, isGrouping = false) {
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days) return;
+
+    const sourceDay = schedule.days[source.dateKey];
+    const targetDay = schedule.days[targetDateKey];
+    if (!sourceDay || !targetDay) return;
+
+    // Se soltou no mesmo turno do mesmo dia, não faz nada
+    if (source.dateKey === targetDateKey && source.turnIndex === targetTurnIndex) {
+      return;
+    }
+
+    if (source.dateKey === targetDateKey) {
+      // 1. MESMO DIA: opera sobre a mesma matriz de turnos
+      const dayNormalized = this.normalizeDaySlots(sourceDay.slots);
+      const sourceWorkers = dayNormalized[source.turnIndex];
+      const targetWorkers = dayNormalized[targetTurnIndex];
+
+      const movedWorker = sourceWorkers.splice(source.workerIndex, 1)[0] || {
+        employeeName: source.employeeName,
+        color: source.color || 'NORMAL'
+      };
+
+      if (isGrouping) {
+        // AGRUPAR / JUNTAR (Com Shift)
+        const alreadyInTarget = targetWorkers.some(w => w.employeeName === movedWorker.employeeName);
+        if (!alreadyInTarget) {
+          targetWorkers.push(movedWorker);
+        }
+        window.app?.showToast(`➕ ${movedWorker.employeeName} agrupado(a) no ${targetTurnIndex + 1}º Turno!`, 'success');
+      } else {
+        // TROCA (Padrão) OU MOVER SE VAZIO
+        if (targetWorkers.length > 0) {
+          const targetWorker = targetWorkers.shift();
+          targetWorkers.push(movedWorker);
+          sourceWorkers.push(targetWorker);
+          window.app?.showToast(`⇄ Invertido: ${movedWorker.employeeName} ⇄ ${targetWorker.employeeName}!`, 'success');
+        } else {
+          targetWorkers.push(movedWorker);
+          window.app?.showToast(`${movedWorker.employeeName} movido(a) para o ${targetTurnIndex + 1}º Turno!`, 'success');
+        }
+      }
+
+      sourceDay.slots = dayNormalized.map(wList => ({ workers: wList }));
+    } else {
+      // 2. DIAS DIFERENTES
+      const sourceNormalized = this.normalizeDaySlots(sourceDay.slots);
+      const targetNormalized = this.normalizeDaySlots(targetDay.slots);
+
+      const sourceWorkers = sourceNormalized[source.turnIndex];
+      const targetWorkers = targetNormalized[targetTurnIndex];
+
+      const movedWorker = sourceWorkers.splice(source.workerIndex, 1)[0] || {
+        employeeName: source.employeeName,
+        color: source.color || 'NORMAL'
+      };
+
+      if (isGrouping) {
+        // AGRUPAR / JUNTAR (Com Shift)
+        const alreadyInTarget = targetWorkers.some(w => w.employeeName === movedWorker.employeeName);
+        if (!alreadyInTarget) {
+          targetWorkers.push(movedWorker);
+        }
+        window.app?.showToast(`➕ ${movedWorker.employeeName} agrupado(a) no ${targetTurnIndex + 1}º Turno!`, 'success');
+      } else {
+        // TROCA (Padrão) OU MOVER SE VAZIO
+        if (targetWorkers.length > 0) {
+          const targetWorker = targetWorkers.shift();
+          targetWorkers.push(movedWorker);
+          sourceWorkers.push(targetWorker);
+          window.app?.showToast(`⇄ Invertido: ${movedWorker.employeeName} ⇄ ${targetWorker.employeeName}!`, 'success');
+        } else {
+          targetWorkers.push(movedWorker);
+          window.app?.showToast(`${movedWorker.employeeName} movido(a) para o ${targetTurnIndex + 1}º Turno!`, 'success');
+        }
+      }
+
+      sourceDay.slots = sourceNormalized.map(wList => ({ workers: wList }));
+      targetDay.slots = targetNormalized.map(wList => ({ workers: wList }));
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+  }
+
+  openEditSlotModal(dateKey, rawDayData) {
+    const [y, m, d] = dateKey.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeekNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+    const titleEl = document.getElementById('edit-slot-date-title');
+    if (titleEl) titleEl.textContent = `Dia ${d} (${dayOfWeekNames[dateObj.getDay()]})`;
+
+    const descEl = document.getElementById('edit-slot-desc');
+    if (descEl) descEl.textContent = `${d} de ${MONTH_NAMES[parseInt(m, 10) - 1]} de ${y}`;
+
+    const dateInput = document.getElementById('edit-slot-date');
+    if (dateInput) dateInput.value = dateKey;
+
+    const normalizedSlots = this.normalizeDaySlots(rawDayData.slots);
+
+    // Popula cada um dos 3 turnos
+    for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+      const container = document.getElementById(`shift-${shiftNum}-workers`);
+      if (container) {
+        container.innerHTML = '';
+        const workers = normalizedSlots[shiftNum - 1];
+
+        if (workers.length === 0) {
+          this.appendPersonToShift(shiftNum, '', 'NORMAL');
+        } else {
+          workers.forEach(w => {
+            this.appendPersonToShift(shiftNum, w.employeeName, w.color || 'NORMAL');
+          });
+        }
+      }
+    }
+
+    window.app?.openModal('modal-edit-slot');
+  }
+
+  appendPersonToShift(shiftNum, selectedEmp = '', selectedColor = 'NORMAL') {
+    const container = document.getElementById(`shift-${shiftNum}-workers`);
+    if (!container) return;
+
+    const rowEl = document.createElement('div');
+    rowEl.className = 'shift-worker-row';
+
+    const employees = this.store.getActiveEmployees();
+    let optionsHtml = '<option value="">(Vazio / Folga)</option>';
+    employees.forEach(emp => {
+      optionsHtml += `<option value="${emp.name}" ${emp.name === selectedEmp ? 'selected' : ''}>${emp.name}</option>`;
+    });
+
+    const isExtra = container.children.length > 0;
+
+    rowEl.innerHTML = `
+      <select class="select-input-modern worker-name-select" style="flex: 1 1 auto; min-width: 200px;">
+        ${optionsHtml}
+      </select>
+      <select class="select-input-modern color-select worker-color-select" style="flex: 0 0 135px; width: 135px;">
+        <option value="NORMAL" ${selectedColor === 'NORMAL' ? 'selected' : ''}>Normal</option>
+        <option value="GREEN" ${selectedColor === 'GREEN' ? 'selected' : ''}>Verde (Folga)</option>
+        <option value="RED" ${selectedColor === 'RED' ? 'selected' : ''}>Vermelho (Fim Sem.)</option>
+      </select>
+      ${isExtra ? `
+        <button type="button" class="btn-icon-danger btn-remove-worker" title="Remover" style="width: 32px; height: 32px; flex-shrink: 0;">
+          <i data-lucide="x" style="width: 13px; height: 13px;"></i>
+        </button>
+      ` : ''}
+    `;
+
+    const removeBtn = rowEl.querySelector('.btn-remove-worker');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => rowEl.remove());
+    }
+
+    container.appendChild(rowEl);
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  }
+
+  saveSlotEdit() {
+    const dateKey = document.getElementById('edit-slot-date')?.value;
+    if (!dateKey) return;
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      schedule = this.scheduler.generateMonthSchedule(this.currentYear, this.currentMonth);
+    }
+    if (!schedule.days) schedule.days = {};
+
+    const newSlots = [];
+
+    for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+      const container = document.getElementById(`shift-${shiftNum}-workers`);
+      const rows = container ? container.querySelectorAll('.shift-worker-row') : [];
+      const workers = [];
+      const seenInThisShift = new Set();
+
+      rows.forEach(row => {
+        const selectName = row.querySelector('.worker-name-select');
+        const selectColor = row.querySelector('.worker-color-select');
+        const name = selectName ? selectName.value.trim() : '';
+        const color = selectColor ? selectColor.value : 'NORMAL';
+        
+        // Bloqueia duplicatas no MESMO turno
+        if (name && !seenInThisShift.has(name)) {
+          seenInThisShift.add(name);
+          workers.push({ employeeName: name, color: color });
+        }
+      });
+
+      newSlots.push({ workers: workers });
+    }
+
+    const dayNumber = parseInt(dateKey.split('-')[2], 10);
+    const dateObj = new Date(this.currentYear, this.currentMonth - 1, dayNumber);
+
+    schedule.days[dateKey] = {
+      dayNumber: dayNumber,
+      dayOfWeek: dateObj.getDay(),
+      slots: newSlots
+    };
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    window.app?.closeModal('modal-edit-slot');
+    this.render();
+    window.app?.showToast('Turnos salvos com sucesso!', 'success');
+  }
+
+  clearDaySlots(dateKey) {
+    const yearMonthKey = this.getYearMonthKey();
+    const schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days || !schedule.days[dateKey]) return;
+
+    schedule.days[dateKey].slots = [
+      { workers: [] },
+      { workers: [] },
+      { workers: [] }
+    ];
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    window.app?.closeModal('modal-edit-slot');
+    this.render();
+    window.app?.showToast('Dia limpo com sucesso!', 'info');
+  }
+
+  renderFilterOptions() {
+    const filterSelect = document.getElementById('filter-employee');
+    if (!filterSelect) return;
+    const currentValue = filterSelect.value;
+    const employees = this.store.getEmployees();
+
+    filterSelect.innerHTML = '<option value="ALL">Visualizar Todos</option>';
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.name;
+      opt.textContent = `Destacar: ${emp.name}`;
+      if (emp.name === currentValue) opt.selected = true;
+      filterSelect.appendChild(opt);
+    });
+  }
+
+  highlightEmployee(employeeName) {
+    const workerChips = document.querySelectorAll('.calendar-day-cell .worker-chip');
+    if (employeeName === 'ALL' || !employeeName) {
+      workerChips.forEach(chip => {
+        chip.classList.remove('highlighted', 'dimmed');
+      });
+      return;
+    }
+
+    workerChips.forEach(chip => {
+      if (chip.dataset.emp === employeeName) {
+        chip.classList.add('highlighted');
+        chip.classList.remove('dimmed');
+      } else {
+        chip.classList.remove('highlighted');
+        chip.classList.add('dimmed');
+      }
+    });
+  }
+
+  renderMonthlyStats(schedule) {
+    const statsContainer = document.getElementById('monthly-stats-grid');
+    if (!statsContainer) return;
+    statsContainer.innerHTML = '';
+
+    const employees = this.store.getActiveEmployees();
+    const counts = {};
+
+    employees.forEach(emp => {
+      counts[emp.name] = { totalShifts: 0, emp };
+    });
+
+    if (schedule && schedule.days) {
+      Object.values(schedule.days).forEach(day => {
+        if (day && day.slots) {
+          const normalized = this.normalizeDaySlots(day.slots);
+          const dayEmpsWorked = new Set();
+          normalized.forEach(turnWorkers => {
+            turnWorkers.forEach(w => {
+              // Folga (cor GREEN) NÃO conta como dia de trabalho
+              if (w.employeeName && counts[w.employeeName] && w.color !== 'GREEN') {
+                if (!dayEmpsWorked.has(w.employeeName)) {
+                  dayEmpsWorked.add(w.employeeName);
+                  counts[w.employeeName].totalShifts++;
+                }
+              }
+            });
+          });
+        }
+      });
+    }
+
+  renderMonthlyStats(schedule) {
+    const statsContainer = document.getElementById('monthly-stats-grid');
+    if (!statsContainer) return;
+    statsContainer.innerHTML = '';
+
+    const yearMonthKey = this.getYearMonthKey();
+    const monthEmployees = this.store.getMonthEmployees(yearMonthKey);
+    const counts = {};
+    monthEmployees.forEach(emp => { counts[emp.name] = { totalShifts: 0, emp }; });
+
+    if (schedule && schedule.days) {
+      Object.values(schedule.days).forEach(day => {
+        if (day && day.slots) {
+          const normalized = this.normalizeDaySlots(day.slots);
+          const dayEmpsWorked = new Set();
+          normalized.forEach(turnWorkers => {
+            turnWorkers.forEach(w => {
+              // Folga (cor GREEN) NÃO conta como dia de trabalho
+              if (w.employeeName && counts[w.employeeName] && w.color !== 'GREEN') {
+                if (!dayEmpsWorked.has(w.employeeName)) {
+                  dayEmpsWorked.add(w.employeeName);
+                  counts[w.employeeName].totalShifts++;
+                }
+              }
+            });
+          });
+        }
+      });
+    }
+
+    monthEmployees.forEach(emp => {
+      const stat = counts[emp.name] || { totalShifts: 0, emp };
+      const chip = document.createElement('div');
+      chip.className = 'stat-chip-pill';
+      chip.innerHTML = `
+        <span class="stat-chip-dot" style="background-color: ${emp.color || '#10b981'};"></span>
+        <span>${emp.name}:</span>
+        <span class="stat-chip-badge">${stat.totalShifts} dias</span>
+      `;
+      statsContainer.appendChild(chip);
+    });
+  }
+
+  openMonthTeamModal() {
+    const yearMonthKey = this.getYearMonthKey();
+    const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
+    
+    const titleEl = document.getElementById('month-team-modal-title');
+    if (titleEl) titleEl.textContent = `Equipe de ${monthTitle}`;
+
+    const container = document.getElementById('month-team-checklist-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const allActiveEmployees = this.store.getActiveEmployees();
+    const selectedIds = this.store.getMonthSelectedEmployeeIds(yearMonthKey);
+
+    const updateCount = () => {
+      const checkedBoxes = container.querySelectorAll('.month-emp-checkbox:checked');
+      const badge = document.getElementById('month-team-count-badge');
+      if (badge) badge.textContent = `${checkedBoxes.length} colaboradores selecionados`;
+    };
+
+    allActiveEmployees.forEach(emp => {
+      const isChecked = selectedIds.includes(emp.id);
+      const itemEl = document.createElement('label');
+      itemEl.className = 'month-team-check-row';
+      itemEl.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-xs); border: 1px solid var(--border-app); cursor: pointer; transition: all 0.2s ease;';
+
+      itemEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <input type="checkbox" class="month-emp-checkbox" value="${emp.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
+          <div class="emp-avatar-sm" style="background-color: ${emp.color || '#10b981'}; width: 28px; height: 28px; font-size: 0.75rem;">
+            ${emp.name.charAt(0)}
+          </div>
+          <div>
+            <h4 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #f8fafc;">${emp.name}</h4>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">${emp.role || 'Balconista'}</span>
+          </div>
+        </div>
+        <span style="font-size: 0.72rem; color: ${emp.color || '#10b981'}; font-weight: 600;">
+          ${emp.prefShift === 'NIGHT_WEEKDAY' ? 'Noite Seg-Qui' : (emp.prefShift === 'PLANTONISTA' ? 'Plantonista' : 'Rodízio')}
+        </span>
+      `;
+
+      itemEl.querySelector('.month-emp-checkbox')?.addEventListener('change', updateCount);
+      container.appendChild(itemEl);
+    });
+
+    updateCount();
+
+    const btnSelectAll = document.getElementById('btn-select-all-month-team');
+    if (btnSelectAll) {
+      btnSelectAll.onclick = () => {
+        container.querySelectorAll('.month-emp-checkbox').forEach(cb => { cb.checked = true; });
+        updateCount();
+      };
+    }
+
+    const btnUnselectAll = document.getElementById('btn-unselect-all-month-team');
+    if (btnUnselectAll) {
+      btnUnselectAll.onclick = () => {
+        container.querySelectorAll('.month-emp-checkbox').forEach(cb => { cb.checked = false; });
+        updateCount();
+      };
+    }
+
+    window.app?.openModal('modal-month-team');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  saveMonthTeam() {
+    const container = document.getElementById('month-team-checklist-container');
+    if (!container) return;
+
+    const checkedBoxes = container.querySelectorAll('.month-emp-checkbox:checked');
+    const checkedIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+    if (checkedIds.length === 0) {
+      window.app?.showToast('Selecione pelo menos 1 colaborador para a equipe deste mês.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    this.store.setMonthSelectedEmployeeIds(yearMonthKey, checkedIds);
+    window.app?.closeModal('modal-month-team');
+    this.render();
+    window.app?.showToast(`Equipe de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} atualizada (${checkedIds.length} colaboradores)! Clique em 'Gerar Escala' para gerar.`, 'success');
+  }
+
+  copyDaySchedule(dateKey, e) {
+    if (e) e.stopPropagation();
+    const yearMonthKey = this.getYearMonthKey();
+    const schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days || !schedule.days[dateKey]) {
+      window.app?.showToast('Não há horários salvos neste dia para copiar.', 'warning');
+      return;
+    }
+
+    const dayData = schedule.days[dateKey];
+    const normalizedSlots = this.normalizeDaySlots(dayData.slots);
+    const dayNumber = parseInt(dateKey.split('-')[2], 10);
+
+    this.copiedDayData = {
+      dateKey: dateKey,
+      dayNumber: dayNumber,
+      slots: JSON.parse(JSON.stringify(normalizedSlots))
+    };
+
+    window.copiedDayData = this.copiedDayData;
+    this.updateCopyPasteUI();
+    this.render();
+    window.app?.showToast(`📋 Horário do dia ${String(dayNumber).padStart(2, '0')} copiado! Clique em 'Colar' nos dias desejados.`, 'info');
+  }
+
+  pasteDaySchedule(targetDateKey, e) {
+    if (e) e.stopPropagation();
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado ainda. Clique em "Copiar" em algum dia primeiro.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    }
+    if (!schedule.days) schedule.days = {};
+
+    const targetDayNumber = parseInt(targetDateKey.split('-')[2], 10);
+    const dateObj = new Date(this.currentYear, this.currentMonth - 1, targetDayNumber);
+
+    const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+      workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+    }));
+
+    schedule.days[targetDateKey] = {
+      dayNumber: targetDayNumber,
+      dayOfWeek: dateObj.getDay(),
+      slots: clonedSlots
+    };
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado com sucesso no dia ${String(targetDayNumber).padStart(2, '0')}!`, 'success');
+  }
+
+  pasteToWeekdaysOfWeek() {
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado.', 'warning');
+      return;
+    }
+
+    const parts = this.copiedDayData.dateKey.split('-');
+    const sourceYear = parseInt(parts[0], 10);
+    const sourceMonth = parseInt(parts[1], 10);
+    const sourceDay = parseInt(parts[2], 10);
+    const sourceDate = new Date(sourceYear, sourceMonth - 1, sourceDay);
+    const dayOfWeek = sourceDate.getDay();
+    const diffToMon = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+    const mondayDate = new Date(sourceDate);
+    mondayDate.setDate(sourceDate.getDate() - diffToMon);
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    if (!schedule.days) schedule.days = {};
+
+    let countPasted = 0;
+    for (let i = 0; i < 5; i++) {
+      const curDate = new Date(mondayDate);
+      curDate.setDate(mondayDate.getDate() + i);
+
+      if (curDate.getMonth() + 1 === this.currentMonth && curDate.getFullYear() === this.currentYear) {
+        const dNum = curDate.getDate();
+        const dKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+        
+        const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+          workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+        }));
+
+        schedule.days[dKey] = {
+          dayNumber: dNum,
+          dayOfWeek: curDate.getDay(),
+          slots: clonedSlots
+        };
+        countPasted++;
+      }
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado em ${countPasted} dias úteis desta semana!`, 'success');
+  }
+
+  pasteToAllWeekdaysOfMonth() {
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    if (!schedule.days) schedule.days = {};
+
+    const totalDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
+    let countPasted = 0;
+
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
+      const dow = dateObj.getDay();
+      if (dow >= 1 && dow <= 5) {
+        const dKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+          workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+        }));
+
+        schedule.days[dKey] = {
+          dayNumber: day,
+          dayOfWeek: dow,
+          slots: clonedSlots
+        };
+        countPasted++;
+      }
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado em todos os ${countPasted} dias úteis do mês!`, 'success');
+  }
+
+  cancelCopy() {
+    this.copiedDayData = null;
+    window.copiedDayData = null;
+    this.updateCopyPasteUI();
+    this.render();
+    window.app?.showToast('Cópia cancelada.', 'info');
+  }
+
+  updateCopyPasteUI() {
+    const toolbar = document.getElementById('copy-paste-toolbar');
+    const label = document.getElementById('copied-day-label');
+    const modalPasteBtn = document.getElementById('btn-modal-paste-day');
+
+    if (this.copiedDayData && this.copiedDayData.slots) {
+      if (toolbar) {
+        toolbar.classList.remove('hidden');
+        if (label) label.textContent = `Dia ${String(this.copiedDayData.dayNumber).padStart(2, '0')}`;
+      }
+      if (modalPasteBtn) {
+        modalPasteBtn.removeAttribute('disabled');
+        modalPasteBtn.classList.remove('disabled');
+      }
+    } else {
+      if (toolbar) {
+        toolbar.classList.add('hidden');
+      }
+      if (modalPasteBtn) {
+        modalPasteBtn.setAttribute('disabled', 'true');
+        modalPasteBtn.classList.add('disabled');
+      }
+    }
+  }
+}
+
+window.CalendarManager = CalendarManager;
