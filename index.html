@@ -1361,8 +1361,9 @@ class CalendarManager {
   constructor(store, scheduler) {
     this.store = store;
     this.scheduler = scheduler;
-    this.currentYear = 2026;
-    this.currentMonth = 8;
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
     this.draggedWorker = null;
     this.hasJustDragged = false;
     this.init();
