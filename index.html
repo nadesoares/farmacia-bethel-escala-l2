@@ -1,0 +1,2855 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmácia Bethel L2 - Escala de Horários</title>
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Bibliotecas para Exportação PDF, Imagem e Supabase Cloud -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+
+  <!-- SINGLE UNIFIED TOP BAR COM LOGO FARMÁCIA BETHEL -->
+  <header class="app-topbar no-print">
+    <div class="topbar-container">
+      
+      <!-- 1. Brand Farmácia Bethel + Navegação de Mês -->
+      <div class="topbar-left">
+        <div class="brand-bethel">
+          <div class="bethel-logo-icon">
+            <svg viewBox="0 0 100 100" class="bethel-svg">
+              <circle cx="50" cy="50" r="45" fill="#dc2626" stroke="#ffffff" stroke-width="5"/>
+              <path d="M40 22h20v18h18v20H60v18H40V60H22V40h18V22z" fill="#ffffff"/>
+            </svg>
+          </div>
+          <div class="bethel-text-group">
+            <span class="bethel-sub">Farmácia</span>
+            <span class="bethel-title">Bethel L2</span>
+          </div>
+        </div>
+
+        <div class="date-navigator">
+          <button id="btn-prev-month" class="nav-arrow-btn" title="Mês Anterior">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <div class="month-label-wrapper">
+            <h2 id="current-month-display">MAIO / 2026</h2>
+            <input type="month" id="month-picker" class="hidden-picker" value="2026-05">
+          </div>
+          <button id="btn-next-month" class="nav-arrow-btn" title="Próximo Mês">
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <button id="btn-today" class="btn-today-pill">Hoje</button>
+        </div>
+      </div>
+
+      <!-- 2. Filter & Admin Controls -->
+      <div class="topbar-center">
+        <div class="filter-box">
+          <i data-lucide="user"></i>
+          <select id="filter-employee" class="select-clean">
+            <option value="ALL">Visualizar Todos</option>
+          </select>
+        </div>
+
+        <!-- Admin Only Actions (Exibidos apenas com Admin Ativo) -->
+        <div id="admin-actions-group" class="admin-only-group admin-only hidden">
+          <button id="btn-month-team" class="btn btn-secondary-pill" title="Selecionar quais funcionários trabalham neste mês">
+            <i data-lucide="user-check"></i>
+            <span>Equipe do Mês</span>
+          </button>
+          <button id="btn-auto-generate" class="btn btn-emerald" title="Gerar escala automática para a equipe deste mês">
+            <i data-lucide="sparkles"></i>
+            <span>Gerar Escala</span>
+          </button>
+          <button id="btn-manage-team" class="btn btn-secondary-pill" title="Cadastro Geral de Funcionários (Configurações)">
+            <i data-lucide="settings"></i>
+            <span>Config</span>
+          </button>
+          <button id="btn-clear-month" class="btn-icon-danger" title="Limpar escala do mês">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Export & Admin Access -->
+      <div class="topbar-right">
+        <!-- Export Menu -->
+        <div class="export-wrapper">
+          <button id="btn-export-menu" class="btn btn-export">
+            <i data-lucide="download"></i>
+            <span>Baixar / Imprimir</span>
+            <i data-lucide="chevron-down" class="icon-sm"></i>
+          </button>
+          <div id="export-dropdown" class="dropdown-menu hidden">
+            <button id="btn-export-img" class="dropdown-item">
+              <i data-lucide="image"></i>
+              <span>Baixar Imagem (PNG)</span>
+            </button>
+            <button id="btn-export-pdf" class="dropdown-item">
+              <i data-lucide="file-text"></i>
+              <span>Baixar PDF</span>
+            </button>
+            <button id="btn-print" class="dropdown-item">
+              <i data-lucide="printer"></i>
+              <span>Imprimir (A4)</span>
+            </button>
+          </div>
+        <button id="btn-supabase-config" class="btn btn-secondary-pill" title="Configurar Conexão com Supabase Cloud">
+          <i data-lucide="cloud"></i>
+          <span>Nuvem</span>
+        </button>
+
+        <!-- Admin Toggle -->
+        <button id="btn-toggle-admin" class="btn-admin-pill" title="Acesso Administrativo">
+          <i data-lucide="lock" id="admin-icon"></i>
+          <span id="admin-btn-text">Admin</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Calendar View -->
+  <main class="app-main">
+
+    <!-- CALENDAR BOARD CONTAINER -->
+    <div class="calendar-card">
+      <div id="printable-calendar" class="printable-calendar">
+        
+        <!-- FLOATING COPY/PASTE STATUS BAR -->
+        <div id="copy-paste-toolbar" class="copy-paste-floating-bar hidden">
+          <div class="copy-info-group">
+            <i data-lucide="copy" style="color: #38bdf8; width: 16px; height: 16px;"></i>
+            <span>Horário copiado do <strong id="copied-day-label">Dia 00</strong></span>
+          </div>
+          <div class="copy-actions-btns">
+            <button type="button" class="btn btn-sm btn-outline-cyan" id="btn-paste-current-week" title="Colar de Segunda a Sexta da semana">
+              <i data-lucide="calendar-range"></i> Colar na Semana
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-emerald" id="btn-paste-all-weekdays" title="Colar em todos os dias úteis do mês">
+              <i data-lucide="check-check"></i> Colar nos Dias Úteis
+            </button>
+            <button type="button" class="btn btn-sm btn-ghost" id="btn-cancel-copy" title="Cancelar">
+              <i data-lucide="x"></i> Cancelar
+            </button>
+          </div>
+        </div>
+
+        <!-- Modern Calendar Grid -->
+        <div class="calendar-table">
+          <!-- Day of Week Headers -->
+          <div class="calendar-header-row">
+            <div class="col-header weekday-col">SEGUNDA</div>
+            <div class="col-header weekday-col">TERÇA</div>
+            <div class="col-header weekday-col">QUARTA</div>
+            <div class="col-header weekday-col">QUINTA</div>
+            <div class="col-header weekday-col">SEXTA</div>
+            <div class="col-header weekend-col">SÁBADO</div>
+            <div class="col-header weekend-col">DOMINGO</div>
+          </div>
+
+          <!-- Dynamic Calendar Days Grid -->
+          <div id="calendar-grid" class="calendar-grid">
+            <!-- Rendered dynamically by calendar.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Summary Bar (EXCLUSIVO NO MODO ADMIN) -->
+    <div id="admin-summary-bar" class="summary-bar-minimal no-print admin-only hidden">
+      <div class="summary-label">
+        <i data-lucide="bar-chart-2"></i>
+        <span>Resumo Mensal:</span>
+      </div>
+      <div id="monthly-stats-grid" class="minimal-stats-row">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: LOGIN ADMINISTRADOR -->
+  <div id="modal-admin-login" class="modal-overlay hidden">
+    <div class="modal-box modern-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <div>
+            <h3>Acesso Administrativo</h3>
+            <span class="text-xs text-muted">Controle e edição de escalas</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-admin-login"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-admin-login">
+        <div class="modal-body">
+          <p class="modal-instruction">Insira seu PIN de administrador para editar e cadastrar.</p>
+          <div class="form-group-center">
+            <input type="password" id="admin-pin" class="pin-input" placeholder="••••" maxlength="8" required autofocus>
+            <span class="pin-hint">PIN padrão: <strong>1234</strong></span>
+          </div>
+          <div id="admin-login-error" class="form-error hidden">
+            <i data-lucide="alert-triangle"></i> PIN incorreto.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-modal="modal-admin-login">Cancelar</button>
+          <button type="submit" class="btn btn-emerald"><i data-lucide="unlock"></i> Entrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SELEÇÃO DA EQUIPE DO MÊS -->
+  <div id="modal-month-team" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 540px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+            <i data-lucide="user-check"></i>
+          </div>
+          <div>
+            <h3 id="month-team-modal-title">Equipe do Mês</h3>
+            <span class="text-xs text-muted">Marque quem vai trabalhar na escala deste mês (desmarque quem estiver de férias ou licença)</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-month-team"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; background: rgba(255,255,255,0.03); padding: 0.5rem 0.75rem; border-radius: var(--radius-xs); border: 1px solid var(--border-app);">
+          <span id="month-team-count-badge" style="font-size: 0.82rem; font-weight: 700; color: #38bdf8;">0 colaboradores selecionados</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" id="btn-select-all-month-team" class="btn btn-sm btn-ghost" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;">
+              Marcar Todos
+            </button>
+            <button type="button" id="btn-unselect-all-month-team" class="btn btn-sm btn-ghost" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; color: #f43f5e;">
+              Desmarcar Todos
+            </button>
+          </div>
+        </div>
+        <div id="month-team-checklist-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto; padding-right: 4px;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal="modal-month-team">Cancelar</button>
+        <button type="button" id="btn-save-month-team" class="btn btn-emerald">
+          <i data-lucide="check"></i> Salvar Equipe do Mês
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTÃO / CADASTRO DE FUNCIONÁRIOS (ADMIN) -->
+  <div id="modal-team-manager" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 620px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <i data-lucide="settings"></i>
+          </div>
+          <div>
+            <h3>Cadastro Geral da Equipe (Config)</h3>
+            <span class="text-xs text-muted">Cadastre e gerencie colaboradores. Ao excluir, o colaborador fica inativo mantendo o histórico.</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-team-manager"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="team-modal-top" style="display: flex; gap: 0.5rem; justify-content: space-between;">
+          <button id="btn-add-employee" class="btn btn-emerald">
+            <i data-lucide="user-plus"></i> Novo Funcionário
+          </button>
+          <button id="btn-reset-default-team" class="btn btn-secondary-pill" title="Restaurar equipe inicial (MAURICIO, LILIAN, DJANE)">
+            <i data-lucide="rotate-ccw"></i> Restaurar Padrão
+          </button>
+        </div>
+        <div class="employees-grid-modal" id="employees-list-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal="modal-team-manager">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CADASTRO / EDIÇÃO DE FUNCIONÁRIO (COM ESCOLHA DE TURNO) -->
+  <div id="modal-employee" class="modal-overlay hidden">
+    <div class="modal-box modern-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <i data-lucide="user"></i>
+          </div>
+          <div>
+            <h3 id="employee-modal-title">Colaborador</h3>
+            <span class="text-xs text-muted">Defina o nome e o turno de trabalho</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-employee"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-employee">
+        <input type="hidden" id="employee-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="employee-name">Nome do Colaborador *</label>
+            <input type="text" id="employee-name" class="form-input-modern" placeholder="Ex: Maurício, Lilian, Carlos..." required>
+          </div>
+          
+          <div class="form-group">
+            <label for="employee-pref-shift">Turno de Trabalho *</label>
+            <select id="employee-pref-shift" class="select-input-modern">
+              <option value="NONE">Giro / Rodízio entre turnos</option>
+              <option value="SHIFT_1">1º Turno (Manhã: 08:00 às 15:00)</option>
+              <option value="SHIFT_2">2º Turno (Alternado: 07:00-11:00 / 16:00-20:00)</option>
+              <option value="SHIFT_3">3º Turno (Noite: 15:00 às 22:00)</option>
+              <option value="NIGHT_WEEKDAY">Fixo Noite Seg-Qui / Manhã Sexta</option>
+              <option value="PLANTONISTA">Plantonista (Dias Específicos)</option>
+            </select>
+          </div>
+
+          <!-- OPÇÕES ESPECÍFICAS DE PLANTONISTA -->
+          <div id="plantonista-options-container" class="form-group hidden" style="background: rgba(255, 255, 255, 0.04); padding: 0.75rem; border-radius: var(--radius-xs); border: 1px solid var(--border-app); display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">
+              Quais dias dá plantão?
+            </label>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; cursor: pointer; color: #f8fafc;">
+                <input type="checkbox" id="plantao-day-fri" value="FRI"> Sexta-feira
+              </label>
+              <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; cursor: pointer; color: #f8fafc;">
+                <input type="checkbox" id="plantao-day-sat" value="SAT"> Sábado
+              </label>
+              <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; cursor: pointer; color: #f8fafc;">
+                <input type="checkbox" id="plantao-day-sun" value="SUN"> Domingo
+              </label>
+            </div>
+            <div style="margin-top: 0.2rem;">
+              <label style="font-size: 0.76rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Turno do Plantão:</label>
+              <select id="plantao-shift-select" class="select-input-modern" style="height: 36px;">
+                <option value="1">1º Turno (Manhã)</option>
+                <option value="2">2º Turno (Alternado)</option>
+                <option value="3">3º Turno (Noite)</option>
+                <option value="ALL">Turno Aberto / Qualquer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="employee-color">Cor de Destaque</label>
+              <div class="color-picker-modern">
+                <input type="color" id="employee-color" class="color-input-circle" value="#10b981">
+                <span id="employee-color-preview" class="color-tag-preview">#10b981</span>
+              </div>
+            </div>
+            <div class="form-group flex-1">
+              <label for="employee-status">Status</label>
+              <select id="employee-status" class="select-input-modern">
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo / Férias</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-modal="modal-employee">Cancelar</button>
+          <button type="submit" class="btn btn-emerald"><i data-lucide="check"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIÇÃO DE DIA (EXATAMENTE 3 TURNOS COM SUPORTE A MÚLTIPLAS PESSOAS) -->
+  <div id="modal-edit-slot" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 540px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <i data-lucide="edit-3"></i>
+          </div>
+          <div>
+            <h3 id="edit-slot-date-title">Editar Dia</h3>
+            <span id="edit-slot-desc" class="text-xs text-muted">Ajuste os 3 turnos do dia</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-edit-slot"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-edit-slot">
+        <input type="hidden" id="edit-slot-date">
+        <div class="modal-body">
+          
+          <!-- Turno 1 Block -->
+          <div class="shift-edit-section" id="section-shift-1">
+            <div class="shift-section-header">
+              <span class="slot-indicator slot-1">1º TURNO</span>
+              <button type="button" class="btn-add-person-shift" data-shift="1">+ Adicionar outra pessoa</button>
+            </div>
+            <div class="shift-workers-list" id="shift-1-workers"></div>
+          </div>
+
+          <!-- Turno 2 Block -->
+          <div class="shift-edit-section" id="section-shift-2">
+            <div class="shift-section-header">
+              <span class="slot-indicator slot-2">2º TURNO</span>
+              <button type="button" class="btn-add-person-shift" data-shift="2">+ Adicionar outra pessoa</button>
+            </div>
+            <div class="shift-workers-list" id="shift-2-workers"></div>
+          </div>
+
+          <!-- Turno 3 Block -->
+          <div class="shift-edit-section" id="section-shift-3">
+            <div class="shift-section-header">
+              <span class="slot-indicator slot-3">3º TURNO</span>
+              <button type="button" class="btn-add-person-shift" data-shift="3">+ Adicionar outra pessoa</button>
+            </div>
+            <div class="shift-workers-list" id="shift-3-workers"></div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.4rem;">
+            <button type="button" class="btn btn-sm btn-outline-cyan" id="btn-modal-copy-day" title="Copiar este dia"><i data-lucide="copy"></i> Copiar Dia</button>
+            <button type="button" class="btn btn-sm btn-outline-emerald disabled" id="btn-modal-paste-day" title="Colar horário copiado" disabled><i data-lucide="clipboard-paste"></i> Colar</button>
+            <button type="button" class="btn btn-sm btn-danger-ghost" id="btn-clear-day-slots"><i data-lucide="eraser"></i> Limpar</button>
+          </div>
+          <div style="display: flex; gap: 0.4rem;">
+            <button type="button" class="btn btn-ghost" data-modal="modal-edit-slot">Cancelar</button>
+            <button type="submit" class="btn btn-emerald"><i data-lucide="check"></i> Salvar Horários</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE CLOUD -->
+  <div id="modal-supabase-config" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i data-lucide="cloud"></i>
+          </div>
+          <div>
+            <h3>Conectar Banco de Dados Supabase</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Sincronização na Nuvem em Tempo Real</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" data-modal="modal-supabase-config">&times;</button>
+      </div>
+      <form id="form-supabase-config">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 12px; font-size: 0.8rem; color: #94a3b8;">
+            <strong style="color: #f8fafc;">Como conectar:</strong>
+            <ol style="margin: 6px 0 0 18px; padding: 0;">
+              <li>Acesse <a href="https://supabase.com" target="_blank" style="color: #38bdf8; text-decoration: underline;">supabase.com</a> e crie um projeto.</li>
+              <li>Em <strong>Project Settings > API</strong>, copie a <code>URL</code> e a <code>anon key</code>.</li>
+              <li>Cole as duas chaves abaixo para sincronizar seus dados.</li>
+            </ol>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="supabase-url-input">Project URL do Supabase</label>
+            <input type="url" id="supabase-url-input" class="input-clean" placeholder="https://xyzxyz.supabase.co" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="supabase-key-input">API Anon Key (Public)</label>
+            <input type="password" id="supabase-key-input" class="input-clean" placeholder="eyJhYmdj... (Sua Anon Key)" required>
+          </div>
+
+          <div id="supabase-status-badge" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;"></div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" id="btn-disconnect-supabase" class="btn btn-danger-ghost" style="display: none;"><i data-lucide="cloud-off"></i> Desconectar</button>
+          <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+            <button type="button" class="btn btn-ghost" data-modal="modal-supabase-config">Cancelar</button>
+            <button type="submit" class="btn btn-emerald"><i data-lucide="save"></i> Salvar Conexão</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Inlined Full Application Scripts (Eliminates Browser Script Caching) -->
+  <script>
+/**
+ * SUPABASE.JS - Conexão e Sincronização Cloud (Supabase)
+ */
+const SUPABASE_STORAGE_KEYS = {
+  URL: 'bethel_supabase_url',
+  KEY: 'bethel_supabase_key'
+};
+
+class SupabaseManager {
+  constructor() {
+    this.client = null;
+    this.init();
+  }
+
+  init() {
+    const url = localStorage.getItem(SUPABASE_STORAGE_KEYS.URL);
+    const key = localStorage.getItem(SUPABASE_STORAGE_KEYS.KEY);
+    if (url && key && window.supabase) {
+      try {
+        this.client = window.supabase.createClient(url, key);
+      } catch (err) {
+        console.error('Erro ao inicializar cliente Supabase:', err);
+        this.client = null;
+      }
+    }
+  }
+
+  isConfigured() {
+    return Boolean(this.client);
+  }
+
+  getCredentials() {
+    return {
+      url: localStorage.getItem(SUPABASE_STORAGE_KEYS.URL) || '',
+      key: localStorage.getItem(SUPABASE_STORAGE_KEYS.KEY) || ''
+    };
+  }
+
+  saveCredentials(url, key) {
+    if (!url || !key) {
+      localStorage.removeItem(SUPABASE_STORAGE_KEYS.URL);
+      localStorage.removeItem(SUPABASE_STORAGE_KEYS.KEY);
+      this.client = null;
+      return false;
+    }
+    localStorage.setItem(SUPABASE_STORAGE_KEYS.URL, url.trim());
+    localStorage.setItem(SUPABASE_STORAGE_KEYS.KEY, key.trim());
+    this.init();
+    return this.isConfigured();
+  }
+
+  async fetchEmployees() {
+    if (!this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.client.from('employees').select('*').order('name');
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        role: item.role,
+        prefShift: item.pref_shift || 'NONE',
+        color: item.color || '#0284c7',
+        status: item.status || 'ACTIVE',
+        createdAt: item.created_at
+      }));
+    } catch (err) {
+      console.warn('Erro ao buscar funcionários no Supabase:', err.message);
+      return null;
+    }
+  }
+
+  async saveEmployees(employeesList) {
+    if (!this.isConfigured()) return false;
+    try {
+      const payload = employeesList.map(emp => ({
+        id: emp.id,
+        name: emp.name,
+        role: emp.role || 'Balconista',
+        pref_shift: emp.prefShift || 'NONE',
+        color: emp.color || '#0284c7',
+        status: emp.status || 'ACTIVE',
+        updated_at: new Date().toISOString()
+      }));
+      const { error } = await this.client.from('employees').upsert(payload, { onConflict: 'id' });
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('Erro ao salvar funcionários no Supabase:', err.message);
+      return false;
+    }
+  }
+
+  async fetchSchedule(yearMonthKey) {
+    if (!this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.client.from('schedules').select('schedule_data').eq('year_month', yearMonthKey).maybeSingle();
+      if (error) throw error;
+      return (data && data.schedule_data) ? data.schedule_data : null;
+    } catch (err) {
+      console.warn(`Erro ao buscar escala ${yearMonthKey} no Supabase:`, err.message);
+      return null;
+    }
+  }
+
+  async saveSchedule(yearMonthKey, scheduleData) {
+    if (!this.isConfigured()) return false;
+    try {
+      const { error } = await this.client.from('schedules').upsert({
+        year_month: yearMonthKey,
+        schedule_data: scheduleData,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'year_month' });
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn(`Erro ao salvar escala ${yearMonthKey} no Supabase:`, err.message);
+      return false;
+    }
+  }
+}
+window.supabaseManager = new SupabaseManager();
+
+/**
+ * STORE.JS - Gerenciamento de Estado e Persistência Local (LocalStorage)
+ */
+const STORAGE_KEYS = {
+  EMPLOYEES: 'farmacia_escala_employees_v3',
+  SCHEDULES: 'farmacia_escala_schedules_v17',
+  ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
+  ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
+};
+
+const DEFAULT_EMPLOYEES = [
+  { id: 'emp-1', name: 'MAURICIO', role: 'Balconista', prefShift: 'NONE', color: '#0284c7', status: 'ACTIVE', createdAt: new Date().toISOString() },
+  { id: 'emp-2', name: 'LILIAN', role: 'Balconista', prefShift: 'NONE', color: '#ec4899', status: 'ACTIVE', createdAt: new Date().toISOString() },
+  { id: 'emp-3', name: 'DJANE', role: 'Balconista', prefShift: 'NIGHT_WEEKDAY', color: '#10b981', status: 'ACTIVE', createdAt: new Date().toISOString() }
+];
+
+class Store {
+  constructor() {
+    this.init();
+  }
+
+  getDefaultAugust2026Schedule() {
+    const days = {
+      "2026-08-01": { dayNumber: 1, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-02": { dayNumber: 2, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-03": { dayNumber: 3, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-04": { dayNumber: 4, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-05": { dayNumber: 5, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-06": { dayNumber: 6, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-07": { dayNumber: 7, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'GREEN' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-08": { dayNumber: 8, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-09": { dayNumber: 9, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-10": { dayNumber: 10, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-11": { dayNumber: 11, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-12": { dayNumber: 12, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-13": { dayNumber: 13, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-14": { dayNumber: 14, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'GREEN' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-15": { dayNumber: 15, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
+      "2026-08-16": { dayNumber: 16, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-17": { dayNumber: 17, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-18": { dayNumber: 18, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-19": { dayNumber: 19, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-20": { dayNumber: 20, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-21": { dayNumber: 21, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-22": { dayNumber: 22, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }, { employeeName: 'DJANE', color: 'RED' }] }] },
+      "2026-08-23": { dayNumber: 23, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-24": { dayNumber: 24, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-25": { dayNumber: 25, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-26": { dayNumber: 26, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-27": { dayNumber: 27, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-28": { dayNumber: 28, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-29": { dayNumber: 29, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
+      "2026-08-30": { dayNumber: 30, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-31": { dayNumber: 31, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] }
+    };
+    return {
+      yearMonth: '2026-08',
+      year: 2026,
+      month: 8,
+      generatedAt: '2026-08-01T00:00:00.000Z',
+      days: days
+    };
+  }
+
+  init() {
+    if (!localStorage.getItem(STORAGE_KEYS.EMPLOYEES)) {
+      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
+    }
+    const existingSchedules = this.getAllSchedules();
+    if (!existingSchedules['2026-08']) {
+      existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
+      localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, '1234');
+    }
+  }
+
+  resetDefaultEmployees() {
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
+    const schedules = {
+      '2026-08': this.getDefaultAugust2026Schedule()
+    };
+    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    return DEFAULT_EMPLOYEES;
+  }
+
+  getEmployees() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
+      let emps = data ? JSON.parse(data) : DEFAULT_EMPLOYEES;
+      return (Array.isArray(emps) && emps.length > 0) ? emps : DEFAULT_EMPLOYEES;
+    } catch (e) {
+      console.error('Erro ao ler funcionários:', e);
+      return DEFAULT_EMPLOYEES;
+    }
+  }
+
+  getActiveEmployees() {
+    return this.getEmployees().filter(emp => emp.status === 'ACTIVE');
+  }
+
+  getEmployeeById(id) {
+    return this.getEmployees().find(emp => emp.id === id);
+  }
+
+  saveEmployee(employeeData) {
+    const employees = this.getEmployees();
+    if (employeeData.id) {
+      const index = employees.findIndex(e => e.id === employeeData.id);
+      if (index !== -1) {
+        employees[index] = { ...employees[index], ...employeeData, updatedAt: new Date().toISOString() };
+      }
+    } else {
+      const newEmp = {
+        ...employeeData,
+        id: 'emp-' + Date.now(),
+        name: employeeData.name.toUpperCase().trim(),
+        createdAt: new Date().toISOString()
+      };
+      employees.push(newEmp);
+    }
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+    if (window.supabaseManager?.isConfigured()) {
+      window.supabaseManager.saveEmployees(employees);
+    }
+    return employees;
+  }
+
+  deleteEmployee(id) {
+    const employees = this.getEmployees();
+    const index = employees.findIndex(e => e.id === id);
+    if (index !== -1) {
+      employees[index].status = 'INACTIVE';
+      employees[index].updatedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+      if (window.supabaseManager?.isConfigured()) {
+        window.supabaseManager.saveEmployees(employees);
+      }
+    }
+    return employees;
+  }
+
+  toggleEmployeeStatus(id) {
+    const employees = this.getEmployees();
+    const index = employees.findIndex(e => e.id === id);
+    if (index !== -1) {
+      employees[index].status = (employees[index].status === 'ACTIVE') ? 'INACTIVE' : 'ACTIVE';
+      employees[index].updatedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+      if (window.supabaseManager?.isConfigured()) {
+        window.supabaseManager.saveEmployees(employees);
+      }
+    }
+    return employees;
+  }
+
+  getMonthSelectedEmployeeIds(yearMonthKey) {
+    const schedule = this.getMonthSchedule(yearMonthKey);
+    if (schedule && Array.isArray(schedule.selectedEmployeeIds) && schedule.selectedEmployeeIds.length > 0) {
+      return schedule.selectedEmployeeIds;
+    }
+    // Padrão: todos os colaboradores que estiverem ativos no cadastro
+    return this.getActiveEmployees().map(e => e.id);
+  }
+
+  setMonthSelectedEmployeeIds(yearMonthKey, employeeIds) {
+    let schedule = this.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      const [year, month] = yearMonthKey.split('-').map(Number);
+      schedule = {
+        yearMonth: yearMonthKey,
+        year: year,
+        month: month,
+        days: {}
+      };
+    }
+    schedule.selectedEmployeeIds = employeeIds;
+    this.saveMonthSchedule(yearMonthKey, schedule);
+    return schedule;
+  }
+
+  getMonthEmployees(yearMonthKey) {
+    const selectedIds = this.getMonthSelectedEmployeeIds(yearMonthKey);
+    const allEmployees = this.getEmployees();
+    const selected = allEmployees.filter(e => selectedIds.includes(e.id) && e.status === 'ACTIVE');
+    return selected.length > 0 ? selected : this.getActiveEmployees();
+  }
+
+  getAllSchedules() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SCHEDULES);
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  getMonthSchedule(yearMonthKey) {
+    return this.getAllSchedules()[yearMonthKey] || null;
+  }
+
+  saveMonthSchedule(yearMonthKey, scheduleData) {
+    const schedules = this.getAllSchedules();
+    const existing = schedules[yearMonthKey];
+    if (existing && Array.isArray(existing.selectedEmployeeIds) && existing.selectedEmployeeIds.length > 0 && (!scheduleData.selectedEmployeeIds || scheduleData.selectedEmployeeIds.length === 0)) {
+      scheduleData.selectedEmployeeIds = existing.selectedEmployeeIds;
+    }
+    schedules[yearMonthKey] = scheduleData;
+    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    if (window.supabaseManager?.isConfigured()) {
+      window.supabaseManager.saveSchedule(yearMonthKey, scheduleData);
+    }
+  }
+
+  async syncFromSupabase() {
+    if (!window.supabaseManager?.isConfigured()) return false;
+    try {
+      const remoteEmps = await window.supabaseManager.fetchEmployees();
+      if (remoteEmps && remoteEmps.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(remoteEmps));
+      }
+      return true;
+    } catch (err) {
+      console.warn('Erro ao sincronizar do Supabase:', err);
+      return false;
+    }
+  }
+
+  deleteMonthSchedule(yearMonthKey) {
+    const schedules = this.getAllSchedules();
+    delete schedules[yearMonthKey];
+    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+  }
+
+  isAdmin() {
+    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true';
+  }
+
+  loginAdmin(pin) {
+    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || '1234';
+    if (pin === savedPin) {
+      sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+      return true;
+    }
+    return false;
+  }
+
+  logoutAdmin() {
+    sessionStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
+  }
+
+  setAdminPin(newPin) {
+    if (newPin && newPin.length >= 4) {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, newPin);
+      return true;
+    }
+    return false;
+  }
+}
+
+const store = new Store();
+window.store = store;
+
+/**
+ * SCHEDULER.JS - Motor da Farmácia: Escala 6x1 Fiel à Imagem 3
+ */
+class PharmacyScheduler {
+  constructor(store) {
+    this.store = store;
+  }
+
+  generateMonthSchedule(year, month) {
+    if (year === 2026 && month === 8) {
+      return this.store.getDefaultAugust2026Schedule();
+    }
+
+    const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const rawActiveEmployees = this.store.getMonthEmployees(yearMonthKey);
+    const selectedEmployeeIds = this.store.getMonthSelectedEmployeeIds(yearMonthKey);
+    if (rawActiveEmployees.length === 0) {
+      throw new Error('Nenhum funcionário ativo selecionado para a escala deste mês.');
+    }
+
+    // 1. Deduplica funcionários por nome sanitizado
+    const uniqueEmployeesMap = new Map();
+    rawActiveEmployees.forEach(emp => {
+      const cleanName = (emp.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+      if (cleanName && !uniqueEmployeesMap.has(cleanName)) {
+        uniqueEmployeesMap.set(cleanName, { ...emp, name: (emp.name || '').trim().toUpperCase() });
+      }
+    });
+
+    const activeEmployees = Array.from(uniqueEmployeesMap.values());
+    const fullTimeEmps = activeEmployees.filter(e => e.prefShift !== 'PLANTONISTA');
+    const plantonistas = activeEmployees.filter(e => e.prefShift === 'PLANTONISTA');
+    const empsList = fullTimeEmps.length > 0 ? fullTimeEmps : activeEmployees;
+    const numEmps = empsList.length;
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysSchedule = {};
+
+    // Identifica todas as sextas-feiras do mês
+    const fridaysInMonth = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(year, month - 1, d);
+      if (dt.getDay() === 5) {
+        fridaysInMonth.push(d);
+      }
+    }
+
+    const numFridays = fridaysInMonth.length;
+
+    // Regra de Priorização de Semanas para Folgas de Sexta:
+    // - 2 colaboradores em 4 semanas: semanas 2 e 3 (índices 1, 2) -> 1ª e 4ª semana sem folga.
+    // - 3 colaboradores em 4 semanas: semanas 2, 3 e 4 (índices 1, 2, 3) -> 1ª semana sem folga.
+    // - 4 colaboradores em 4 semanas: todas as 4 semanas (índices 0, 1, 2, 3).
+    // - 4 colaboradores em 5 semanas: semanas 2, 3, 4 e 5 (índices 1, 2, 3, 4) -> 1ª semana sem folga.
+    // - 5 ou 6 colaboradores: 1ª semana sem folga verde (maior movimento de início de mês), folgas nas semanas 2, 3, 4 (e 5).
+    let candidateFridayIndices = [];
+    if (numFridays === 4) {
+      if (numEmps === 2) candidateFridayIndices = [1, 2];
+      else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
+      else if (numEmps === 4) candidateFridayIndices = [0, 1, 2, 3];
+      else candidateFridayIndices = [1, 2, 3]; // 5 ou 6 colaboradores em 4 semanas: 1ª semana livre
+    } else if (numFridays === 5) {
+      if (numEmps === 2) candidateFridayIndices = [1, 2];
+      else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
+      else if (numEmps === 4) candidateFridayIndices = [1, 2, 3, 4];
+      else candidateFridayIndices = [1, 2, 3, 4]; // 5 ou 6 colaboradores em 5 semanas: 1ª semana livre
+    } else {
+      if (numEmps >= numFridays) {
+        candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
+      } else {
+        candidateFridayIndices = Array.from({ length: Math.min(numEmps, numFridays - 1) }, (_, i) => i + 1);
+      }
+    }
+
+    // Âncora perpétua: Segunda-feira 03/08/2026 (Início da escala base)
+    const epochMonday = new Date(2026, 7, 3);
+
+    // Identifica se há alguém com preferência explícita de noite de Seg-Qui
+    const explicitNightEmp = empsList.find(e => e.prefShift === 'NIGHT_WEEKDAY');
+
+    // ====================================================================
+    // MAPEAMENTO DE FOLGA VERDE (SEXTA-FEIRA) - GARANTIA: TODO FUNCIONÁRIO
+    // RECEBE EXATAMENTE 1 FOLGA VERDE POR MÊS.
+    // ====================================================================
+    const fridayOffMap = {}; // fDay -> Set of greenEmpNames
+    const assignedGreenEmployees = new Set();
+    const maxGreensPerFriday = (numEmps >= 5) ? 2 : 1;
+
+    // Inicializa todas as sextas com Sets vazios
+    fridaysInMonth.forEach(fDay => { fridayOffMap[fDay] = new Set(); });
+
+    // --- PASSO 1: Para cada sexta candidata, determina quem folga no sábado
+    //     e atribui folga verde apenas a quem AINDA NÃO recebeu. ---
+    candidateFridayIndices.forEach(fIdx => {
+      const fDay = fridaysInMonth[fIdx];
+      const mondayDate = new Date(year, month - 1, fDay - 4);
+      const daysDiff = Math.round((mondayDate - epochMonday) / (24 * 60 * 60 * 1000));
+      const globalWeekIdx = Math.floor(daysDiff / 7);
+      const mod3 = ((globalWeekIdx % 3) + 3) % 3;
+      const mod4 = ((globalWeekIdx % 4) + 4) % 4;
+      const isEvenWeek = (globalWeekIdx % 2 === 0);
+
+      // Determina TODOS os funcionários que FOLGAM no sábado dessa semana
+      let satOffEmps = [];
+      if (numEmps === 1) {
+        // 1 func: folga sábado em semanas ÍMPARES (trabalha domingo)
+        satOffEmps = !isEvenWeek ? [empsList[0]] : [];
+      } else if (numEmps === 2) {
+        satOffEmps = [isEvenWeek ? empsList[0] : empsList[1]];
+      } else if (numEmps === 3) {
+        if (explicitNightEmp) {
+          const rotEmps = empsList.filter(e => e !== explicitNightEmp);
+          const rotEmp1 = rotEmps[0] || empsList[0];
+          const rotEmp2 = rotEmps[1] || empsList[1];
+          satOffEmps = [(mod4 === 0 || mod4 === 3) ? explicitNightEmp : (mod4 === 1 ? rotEmp2 : rotEmp1)];
+        } else {
+          satOffEmps = [empsList[mod3]];
+        }
+      } else if (numEmps === 4) {
+        // Quem trabalha no sábado vs quem folga:
+        // mod4===0: trabalham E0,E2 → folgam E1,E3
+        // mod4===1: trabalham E3,E1 → folgam E0,E2
+        // mod4===2: trabalham E2,E0 → folgam E3,E1
+        // mod4===3: trabalham E1,E3 → folgam E0,E2
+        if (mod4 === 0) satOffEmps = [empsList[1], empsList[3]];
+        else if (mod4 === 1) satOffEmps = [empsList[0], empsList[2]];
+        else if (mod4 === 2) satOffEmps = [empsList[3], empsList[1]];
+        else satOffEmps = [empsList[0], empsList[2]];
+      } else if (numEmps === 5) {
+        // Domingo: w3 e w4 trabalham → eles folgaram no sábado
+        const w3 = empsList[(3 + globalWeekIdx * 2) % 5];
+        const w4 = empsList[(4 + globalWeekIdx * 2) % 5];
+        satOffEmps = [w3, w4];
+      } else {
+        // 6+: metade folga no sábado
+        const half = Math.ceil(numEmps / 2);
+        satOffEmps = isEvenWeek ? empsList.slice(half) : empsList.slice(0, half);
+      }
+
+      // Atribui verde a quem AINDA NÃO recebeu, respeitando o limite por sexta
+      let assigned = 0;
+      satOffEmps.forEach(emp => {
+        if (emp && assigned < maxGreensPerFriday && !assignedGreenEmployees.has(emp.name)) {
+          fridayOffMap[fDay].add(emp.name);
+          assignedGreenEmployees.add(emp.name);
+          assigned++;
+        }
+      });
+    });
+
+    // --- PASSO 2: GARANTIA - qualquer funcionário que AINDA não recebeu folga verde
+    //     é forçado a receber numa sexta candidata disponível. ---
+    empsList.forEach(emp => {
+      if (!assignedGreenEmployees.has(emp.name)) {
+        // Tenta sexta candidata com espaço
+        for (const fIdx of candidateFridayIndices) {
+          const fDay = fridaysInMonth[fIdx];
+          if (fridayOffMap[fDay].size < maxGreensPerFriday) {
+            fridayOffMap[fDay].add(emp.name);
+            assignedGreenEmployees.add(emp.name);
+            break;
+          }
+        }
+        // Se ainda não atribuído, aceita qualquer sexta candidata (acima do limite)
+        if (!assignedGreenEmployees.has(emp.name)) {
+          for (const fIdx of candidateFridayIndices) {
+            const fDay = fridaysInMonth[fIdx];
+            fridayOffMap[fDay].add(emp.name);
+            assignedGreenEmployees.add(emp.name);
+            break;
+          }
+        }
+      }
+    });
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sáb
+      const dayKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const slots = [[], [], []];
+
+      // Determina a semana global contínua (Segunda a Domingo)
+      const diffToMon = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+      const mondayDate = new Date(year, month - 1, day - diffToMon);
+      const daysDiff = Math.round((mondayDate - epochMonday) / (24 * 60 * 60 * 1000));
+      const globalWeekIdx = Math.floor(daysDiff / 7);
+      const mod3 = ((globalWeekIdx % 3) + 3) % 3;
+      const mod4 = ((globalWeekIdx % 4) + 4) % 4;
+      const isEvenWeek = (globalWeekIdx % 2 === 0);
+
+      if (numEmps === 1) {
+        // ==========================================
+        // --- CASO 1 FUNCIONÁRIO ---
+        // Alterna: Semana Par → T1 + trabalha Sáb + folga Dom
+        //          Semana Ímpar → T3 + folga Sáb + trabalha Dom (GREEN na Sexta)
+        // ==========================================
+        const emp = empsList[0];
+        const sIdx = isEvenWeek ? 0 : 2; // T1 (par) ou T3 (ímpar)
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+          const isGreen = (dayOfWeek === 5 && fridayOffMap[day] && fridayOffMap[day].has(emp.name));
+          slots[sIdx].push({ employeeName: emp.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+        } else if (dayOfWeek === 6) {
+          // Sábado: trabalha em semanas pares, folga em ímpares
+          if (isEvenWeek) {
+            slots[sIdx].push({ employeeName: emp.name, color: 'RED' });
+          }
+        } else if (dayOfWeek === 0) {
+          // Domingo: trabalha em semanas ímpares (folgou sábado), folga em pares
+          if (!isEvenWeek) {
+            slots[sIdx].push({ employeeName: emp.name, color: 'RED' });
+          }
+        }
+
+
+      } else if (numEmps === 2) {
+        // ==========================================
+        // --- CASO 2 FUNCIONÁRIOS (1 NO T1, 1 NO T3) ---
+        // ==========================================
+        const empA = empsList[0];
+        const empB = empsList[1];
+        const hasGreen = fridayOffMap[day] && fridayOffMap[day].size > 0;
+
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          const t1 = isEvenWeek ? empA : empB;
+          const t3 = isEvenWeek ? empB : empA;
+          slots[0].push({ employeeName: t1.name, color: 'NORMAL' });
+          slots[2].push({ employeeName: t3.name, color: 'NORMAL' });
+
+        } else if (dayOfWeek === 5) {
+          if (hasGreen) {
+            const greenEmpName = Array.from(fridayOffMap[day])[0];
+            const greenWorker = (empA.name === greenEmpName) ? empA : empB;
+            const otherWorker = (empA.name === greenEmpName) ? empB : empA;
+            slots[0].push({ employeeName: greenWorker.name, color: 'GREEN' });
+            slots[2].push({ employeeName: otherWorker.name, color: 'NORMAL' });
+          } else {
+            const t1 = isEvenWeek ? empA : empB;
+            const t3 = isEvenWeek ? empB : empA;
+            slots[0].push({ employeeName: t1.name, color: 'NORMAL' });
+            slots[2].push({ employeeName: t3.name, color: 'NORMAL' });
+          }
+
+        } else if (dayOfWeek === 6) {
+          if (isEvenWeek) {
+            const sIdx = (mod4 === 0) ? 2 : 0;
+            slots[sIdx].push({ employeeName: empB.name, color: 'RED' });
+          } else {
+            const sIdx = (mod4 === 1) ? 2 : 0;
+            slots[sIdx].push({ employeeName: empA.name, color: 'RED' });
+          }
+
+        } else if (dayOfWeek === 0) {
+          if (isEvenWeek) {
+            const sIdx = (mod4 === 0) ? 0 : 2;
+            slots[sIdx].push({ employeeName: empA.name, color: 'RED' });
+          } else {
+            const sIdx = (mod4 === 1) ? 0 : 2;
+            slots[sIdx].push({ employeeName: empB.name, color: 'RED' });
+          }
+        }
+
+      } else if (numEmps === 3) {
+        // ==========================================
+        // --- CASO 3 FUNCIONÁRIOS (1 NO T1, 2 NO T3) ---
+        // ==========================================
+        if (explicitNightEmp) {
+          const rotEmps = empsList.filter(e => e !== explicitNightEmp);
+          const rotEmp1 = rotEmps[0] || empsList[0];
+          const rotEmp2 = rotEmps[1] || empsList[1];
+
+          if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+            if (mod4 === 0 || mod4 === 2) {
+              slots[0].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+            } else {
+              slots[0].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
+            }
+          } else if (dayOfWeek === 5) {
+            const hasGreen = fridayOffMap[day] && fridayOffMap[day].size > 0;
+            if (hasGreen) {
+              const greenEmpName = Array.from(fridayOffMap[day])[0];
+              const workingEmps = empsList.filter(e => e.name !== greenEmpName);
+              slots[0].push({ employeeName: greenEmpName, color: 'GREEN' });
+              if (workingEmps[0]) slots[0].push({ employeeName: workingEmps[0].name, color: 'NORMAL' });
+              if (workingEmps[1]) slots[2].push({ employeeName: workingEmps[1].name, color: 'NORMAL' });
+            } else {
+              if (mod4 === 0 || mod4 === 2) {
+                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+                slots[0].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+                slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
+              } else {
+                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+                slots[0].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
+                slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+              }
+            }
+          } else if (dayOfWeek === 6) {
+            if (mod4 === 0) {
+              slots[0].push({ employeeName: rotEmp1.name, color: 'RED' });
+              slots[2].push({ employeeName: rotEmp2.name, color: 'RED' });
+            } else if (mod4 === 1) {
+              slots[0].push({ employeeName: explicitNightEmp.name, color: 'RED' });
+              slots[2].push({ employeeName: rotEmp1.name, color: 'RED' });
+            } else if (mod4 === 2) {
+              slots[2].push({ employeeName: rotEmp2.name, color: 'RED' });
+              slots[2].push({ employeeName: explicitNightEmp.name, color: 'RED' });
+            } else {
+              slots[2].push({ employeeName: rotEmp1.name, color: 'RED' });
+              slots[0].push({ employeeName: rotEmp2.name, color: 'RED' });
+            }
+          } else if (dayOfWeek === 0) {
+            if (mod4 === 0 || mod4 === 3) {
+              slots[0].push({ employeeName: explicitNightEmp.name, color: 'RED' });
+            } else if (mod4 === 1) {
+              slots[0].push({ employeeName: rotEmp2.name, color: 'RED' });
+            } else {
+              slots[0].push({ employeeName: rotEmp1.name, color: 'RED' });
+            }
+          }
+        } else {
+          // Sem preferência fixa: RODÍZIO TOTAL EQUITATIVO DE TODOS OS 3 FUNCIONÁRIOS
+          const satOffEmp = empsList[mod3]; // Folga no Sábado e trabalha no Domingo
+          const satWork1 = empsList[(mod3 + 1) % 3];
+          const satWork2 = empsList[(mod3 + 2) % 3];
+
+          if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+            slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
+            slots[2].push({ employeeName: satWork1.name, color: 'NORMAL' });
+            slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
+
+          } else if (dayOfWeek === 5) {
+            const hasGreen = fridayOffMap[day] && fridayOffMap[day].has(satOffEmp.name);
+            if (hasGreen) {
+              slots[0].push({ employeeName: satOffEmp.name, color: 'GREEN' });
+              slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
+            } else {
+              slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
+              slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
+            }
+
+          } else if (dayOfWeek === 6) {
+            // Sábado: os outros 2 trabalham (1 no T1, 1 no T3) e satOffEmp FOLGA
+            slots[0].push({ employeeName: satWork1.name, color: 'RED' });
+            slots[2].push({ employeeName: satWork2.name, color: 'RED' });
+
+          } else if (dayOfWeek === 0) {
+            // Domingo: quem folgou no sábado trabalha no Domingo
+            slots[0].push({ employeeName: satOffEmp.name, color: 'RED' });
+          }
+        }
+
+      } else if (numEmps === 4) {
+        // ==========================================
+        // --- CASO 4 FUNCIONÁRIOS (2 NO T1, 2 NO T3, T2 VAZIO) ---
+        // ==========================================
+        const groupA = [empsList[0], empsList[1]];
+        const groupB = [empsList[2], empsList[3]];
+
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          const t1Group = isEvenWeek ? groupA : groupB;
+          const t3Group = isEvenWeek ? groupB : groupA;
+          t1Group.forEach(e => slots[0].push({ employeeName: e.name, color: 'NORMAL' }));
+          t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
+
+        } else if (dayOfWeek === 5) {
+          const t1Group = isEvenWeek ? groupB : groupA;
+          const t3Group = isEvenWeek ? groupA : groupB;
+
+          t1Group.forEach(e => {
+            const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
+            slots[0].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+          });
+          t3Group.forEach(e => {
+            const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
+            slots[2].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+          });
+
+        } else if (dayOfWeek === 6) {
+          let satT1, satT3;
+          if (mod4 === 0) {
+            satT1 = empsList[0];
+            satT3 = empsList[2];
+          } else if (mod4 === 1) {
+            satT1 = empsList[3];
+            satT3 = empsList[1];
+          } else if (mod4 === 2) {
+            satT1 = empsList[2];
+            satT3 = empsList[0];
+          } else {
+            satT1 = empsList[1];
+            satT3 = empsList[3];
+          }
+          slots[0].push({ employeeName: satT1.name, color: 'RED' });
+          slots[2].push({ employeeName: satT3.name, color: 'RED' });
+
+        } else if (dayOfWeek === 0) {
+          let sunT1, sunT3;
+          if (mod4 === 0) {
+            sunT1 = empsList[1];
+            sunT3 = empsList[3];
+          } else if (mod4 === 1) {
+            sunT1 = empsList[2];
+            sunT3 = empsList[0];
+          } else if (mod4 === 2) {
+            sunT1 = empsList[3];
+            sunT3 = empsList[1];
+          } else {
+            sunT1 = empsList[0];
+            sunT3 = empsList[2];
+          }
+          slots[0].push({ employeeName: sunT1.name, color: 'RED' });
+          slots[2].push({ employeeName: sunT3.name, color: 'RED' });
+        }
+
+      } else if (numEmps === 5) {
+        // ==========================================
+        // --- CASO 5 FUNCIONÁRIOS (ÚNICO CASO COM 2º TURNO: 2 NO T1, 1 NO T2, 2 NO T3) ---
+        // ==========================================
+        const baseShiftMap = [0, 0, 1, 2, 2];
+
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+          empsList.forEach((emp, empIdx) => {
+            let sIdx = baseShiftMap[(empIdx + globalWeekIdx) % 5];
+            const isGreen = (dayOfWeek === 5 && fridayOffMap[day] && fridayOffMap[day].has(emp.name));
+            slots[sIdx].push({ employeeName: emp.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+          });
+        } else if (dayOfWeek === 6) {
+          const w0 = empsList[(0 + globalWeekIdx * 2) % 5];
+          const w1 = empsList[(1 + globalWeekIdx * 2) % 5];
+          const w2 = empsList[(2 + globalWeekIdx * 2) % 5];
+          slots[0].push({ employeeName: w0.name, color: 'RED' });
+          slots[1].push({ employeeName: w1.name, color: 'RED' });
+          slots[2].push({ employeeName: w2.name, color: 'RED' });
+        } else if (dayOfWeek === 0) {
+          const w3 = empsList[(3 + globalWeekIdx * 2) % 5];
+          const w4 = empsList[(4 + globalWeekIdx * 2) % 5];
+          slots[0].push({ employeeName: w3.name, color: 'RED' });
+          slots[2].push({ employeeName: w4.name, color: 'RED' });
+        }
+
+      } else {
+        // ==========================================
+        // --- CASO 6 OU MAIS FUNCIONÁRIOS (3 NO T1, 3 NO T3, T2 VAZIO) ---
+        // ==========================================
+        const half = Math.ceil(numEmps / 2);
+        const groupA = empsList.slice(0, half);
+        const groupB = empsList.slice(half);
+
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          const t1Group = isEvenWeek ? groupA : groupB;
+          const t3Group = isEvenWeek ? groupB : groupA;
+          t1Group.forEach(e => slots[0].push({ employeeName: e.name, color: 'NORMAL' }));
+          t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
+
+        } else if (dayOfWeek === 5) {
+          const t1Group = isEvenWeek ? groupB : groupA;
+          const t3Group = isEvenWeek ? groupA : groupB;
+
+          t1Group.forEach(e => {
+            const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
+            slots[0].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+          });
+          t3Group.forEach(e => {
+            const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
+            slots[2].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+          });
+
+        } else if (dayOfWeek === 6) {
+          const satGroup = isEvenWeek ? groupA : groupB;
+          // Distribui entre 1º e 3º Turnos (2 no T1, 1 no T3 ou proporcional)
+          const satT1Count = Math.ceil(satGroup.length / 2);
+          satGroup.forEach((e, idx) => {
+            const sIdx = (idx < satT1Count) ? 0 : 2;
+            slots[sIdx].push({ employeeName: e.name, color: 'RED' });
+          });
+
+        } else if (dayOfWeek === 0) {
+          const sunGroup = isEvenWeek ? groupB : groupA;
+          // Os que folgaram no sábado trabalham no domingo
+          const sunT1Count = Math.floor(sunGroup.length / 2);
+          sunGroup.forEach((e, idx) => {
+            const sIdx = (idx < sunT1Count) ? 0 : 2;
+            slots[sIdx].push({ employeeName: e.name, color: 'RED' });
+          });
+        }
+      }
+
+      // Adicionar Plantonistas se houver
+      plantonistas.forEach(p => {
+        const pName = (p.name || '').trim().toUpperCase();
+        const pDays = p.onCallDays || ['SAT', 'SUN'];
+        const dayStrMap = { 5: 'FRI', 6: 'SAT', 0: 'SUN' };
+        if (dayStrMap[dayOfWeek] && pDays.includes(dayStrMap[dayOfWeek])) {
+          const shiftIdx = (p.onCallShift === '3' ? 2 : (p.onCallShift === '2' ? 1 : 0));
+          slots[shiftIdx].push({ employeeName: pName, color: (dayOfWeek === 0 || dayOfWeek === 6) ? 'RED' : 'NORMAL' });
+        }
+      });
+
+      daysSchedule[dayKey] = {
+        dayNumber: day,
+        dayOfWeek: dayOfWeek,
+        slots: slots.map(turnWorkers => ({ workers: turnWorkers }))
+      };
+    }
+
+    return {
+      yearMonth: yearMonthKey,
+      year: year,
+      month: month,
+      selectedEmployeeIds: selectedEmployeeIds,
+      generatedAt: new Date().toISOString(),
+      days: daysSchedule
+    };
+  }
+}
+
+const scheduler = new PharmacyScheduler(window.store);
+window.scheduler = scheduler;
+
+/**
+ * CALENDAR.JS - Grade com 3 Turnos Fixos, Drag & Drop e Editor
+ */
+const MONTH_NAMES = [
+  'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+  'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+];
+
+class CalendarManager {
+  constructor(store, scheduler) {
+    this.store = store;
+    this.scheduler = scheduler;
+    this.currentYear = 2026;
+    this.currentMonth = 8;
+    this.draggedWorker = null;
+    this.hasJustDragged = false;
+    this.init();
+  }
+
+  init() {
+    this.bindEvents();
+    this.render();
+  }
+
+  bindEvents() {
+    document.getElementById('btn-prev-month')?.addEventListener('click', () => this.changeMonth(-1));
+    document.getElementById('btn-next-month')?.addEventListener('click', () => this.changeMonth(1));
+    document.getElementById('btn-today')?.addEventListener('click', () => this.goToToday());
+
+    const monthPicker = document.getElementById('month-picker');
+    monthPicker?.addEventListener('change', (e) => {
+      if (e.target.value) {
+        const [year, month] = e.target.value.split('-').map(Number);
+        this.currentYear = year;
+        this.currentMonth = month;
+        this.render();
+      }
+    });
+
+    document.getElementById('filter-employee')?.addEventListener('change', (e) => {
+      this.highlightEmployee(e.target.value);
+    });
+
+    // Botão Equipe do Mês
+    document.getElementById('btn-month-team')?.addEventListener('click', () => {
+      this.openMonthTeamModal();
+    });
+
+    // Botão Salvar Equipe do Mês
+    document.getElementById('btn-save-month-team')?.addEventListener('click', () => {
+      this.saveMonthTeam();
+    });
+
+    document.getElementById('btn-auto-generate')?.addEventListener('click', () => {
+      this.generateAndSaveCurrentMonth();
+    });
+
+    document.getElementById('btn-clear-month')?.addEventListener('click', () => {
+      if (confirm(`Deseja realmente limpar toda a escala de ${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}?`)) {
+        const yearMonthKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+        this.store.deleteMonthSchedule(yearMonthKey);
+        this.render();
+        window.app?.showToast('Escala do mês limpa!', 'info');
+      }
+    });
+
+    document.getElementById('form-edit-slot')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveSlotEdit();
+    });
+
+    // Botão Limpar Dia
+    document.getElementById('btn-clear-day-slots')?.addEventListener('click', () => {
+      const dateKey = document.getElementById('edit-slot-date')?.value;
+      if (dateKey) this.clearDaySlots(dateKey);
+    });
+
+    document.querySelectorAll('.btn-add-person-shift').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const shiftNum = parseInt(btn.dataset.shift, 10);
+        this.appendPersonToShift(shiftNum, '', 'NORMAL');
+      });
+    });
+
+    // Botões de Copiar e Colar na barra flutuante
+    document.getElementById('btn-paste-current-week')?.addEventListener('click', () => {
+      this.pasteToWeekdaysOfWeek();
+    });
+
+    document.getElementById('btn-paste-all-weekdays')?.addEventListener('click', () => {
+      this.pasteToAllWeekdaysOfMonth();
+    });
+
+    document.getElementById('btn-cancel-copy')?.addEventListener('click', () => {
+      this.cancelCopy();
+    });
+
+    // Botões de Copiar e Colar no Modal de Edição do Dia
+    document.getElementById('btn-modal-copy-day')?.addEventListener('click', () => {
+      const dateKey = document.getElementById('edit-slot-date')?.value;
+      if (dateKey) this.copyDaySchedule(dateKey);
+    });
+
+    document.getElementById('btn-modal-paste-day')?.addEventListener('click', () => {
+      if (!this.copiedDayData || !this.copiedDayData.slots) {
+        window.app?.showToast('Nenhum horário copiado.', 'warning');
+        return;
+      }
+      for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+        const container = document.getElementById(`shift-${shiftNum}-workers`);
+        if (container) container.innerHTML = '';
+        const workers = this.copiedDayData.slots[shiftNum - 1] || [];
+        if (workers.length === 0) {
+          this.appendPersonToShift(shiftNum, '', 'NORMAL');
+        } else {
+          workers.forEach(w => {
+            this.appendPersonToShift(shiftNum, w.employeeName, w.color || 'NORMAL');
+          });
+        }
+      }
+      window.app?.showToast(`Horário do dia ${String(this.copiedDayData.dayNumber).padStart(2, '0')} carregado!`, 'info');
+    });
+  }
+
+  changeMonth(delta) {
+    this.currentMonth += delta;
+    if (this.currentMonth > 12) {
+      this.currentMonth = 1;
+      this.currentYear++;
+    } else if (this.currentMonth < 1) {
+      this.currentMonth = 12;
+      this.currentYear--;
+    }
+    this.render();
+  }
+
+  goToToday() {
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
+    this.render();
+  }
+
+  getYearMonthKey() {
+    return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+  }
+
+  generateAndSaveCurrentMonth() {
+    try {
+      const schedule = this.scheduler.generateMonthSchedule(this.currentYear, this.currentMonth);
+      this.store.saveMonthSchedule(this.getYearMonthKey(), schedule);
+      this.render();
+      window.app?.showToast(`Escala de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} gerada!`, 'success');
+    } catch (err) {
+      window.app?.showToast(err.message || 'Erro ao gerar escala', 'error');
+    }
+  }
+
+  getEmptyMonthSchedule(year, month) {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysSchedule = {};
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      daysSchedule[dayKey] = {
+        dayNumber: day,
+        dayOfWeek: date.getDay(),
+        slots: [{ workers: [] }, { workers: [] }, { workers: [] }]
+      };
+    }
+    return {
+      yearMonth: `${year}-${String(month).padStart(2, '0')}`,
+      year: year,
+      month: month,
+      days: daysSchedule
+    };
+  }
+
+  render() {
+    const yearMonthKey = this.getYearMonthKey();
+    const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
+    
+    const displayEl = document.getElementById('current-month-display');
+    if (displayEl) displayEl.textContent = monthTitle;
+    
+    const pickerEl = document.getElementById('month-picker');
+    if (pickerEl) pickerEl.value = yearMonthKey;
+
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      // Começa vazio; o usuário clica em "Gerar Escala" quando desejar gerar para este mês
+      schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    }
+
+    this.renderCalendarGrid(schedule);
+    this.renderFilterOptions();
+    this.renderMonthlyStats(schedule);
+
+    const printableCal = document.getElementById('printable-calendar');
+    if (printableCal) {
+      if (this.store.isAdmin()) printableCal.classList.add('admin-active');
+      else printableCal.classList.remove('admin-active');
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  normalizeDaySlots(rawSlots) {
+    const normalized = [[], [], []];
+    if (!rawSlots || !Array.isArray(rawSlots)) return normalized;
+
+    for (let i = 0; i < 3; i++) {
+      const slotData = rawSlots[i];
+      if (!slotData) continue;
+      const seenInTurn = new Set();
+
+      if (Array.isArray(slotData)) {
+        slotData.forEach(item => {
+          if (item && item.employeeName && item.employeeName.trim()) {
+            const name = item.employeeName.trim();
+            if (!seenInTurn.has(name)) {
+              seenInTurn.add(name);
+              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+            }
+          }
+        });
+      } else if (slotData.workers && Array.isArray(slotData.workers)) {
+        slotData.workers.forEach(item => {
+          if (item && item.employeeName && item.employeeName.trim()) {
+            const name = item.employeeName.trim();
+            if (!seenInTurn.has(name)) {
+              seenInTurn.add(name);
+              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+            }
+          }
+        });
+      }
+    }
+    return normalized;
+  }
+
+  renderCalendarGrid(schedule) {
+    const gridEl = document.getElementById('calendar-grid');
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
+
+    const firstDayDate = new Date(this.currentYear, this.currentMonth - 1, 1);
+    const totalDaysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+
+    let firstDayIndex = firstDayDate.getDay() - 1;
+    if (firstDayIndex === -1) firstDayIndex = 6;
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day-cell other-month';
+      gridEl.appendChild(emptyCell);
+    }
+
+    const today = new Date();
+    const isCurrentActualMonth = (today.getFullYear() === this.currentYear && (today.getMonth() + 1) === this.currentMonth);
+
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const rawDayData = (schedule.days && schedule.days[dateKey]) || { dayNumber: day, slots: [] };
+      const normalizedSlots = this.normalizeDaySlots(rawDayData.slots);
+
+      const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
+      const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+      const isToday = isCurrentActualMonth && (today.getDate() === day);
+
+      const isCopiedSource = Boolean(this.copiedDayData && this.copiedDayData.dateKey === dateKey);
+      const hasCopied = Boolean(this.copiedDayData && this.copiedDayData.slots);
+
+      const dayCell = document.createElement('div');
+      dayCell.className = `calendar-day-cell ${isWeekend ? 'is-weekend' : ''} ${isToday ? 'is-today' : ''} ${isCopiedSource ? 'is-copied-source' : ''} ${hasCopied ? 'has-copied-active' : ''}`;
+      dayCell.dataset.dateKey = dateKey;
+
+      // Topbar com Badge do Dia e Ações Rápidas (Copiar / Colar)
+      const topbarEl = document.createElement('div');
+      topbarEl.className = 'day-cell-topbar';
+
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'day-header-badge';
+      dayHeader.textContent = day;
+      topbarEl.appendChild(dayHeader);
+
+      if (this.store.isAdmin()) {
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'day-cell-actions';
+
+        const btnCopy = document.createElement('button');
+        btnCopy.type = 'button';
+        btnCopy.className = 'btn-day-action btn-copy-day';
+        btnCopy.title = `Copiar horários do dia ${day}`;
+        btnCopy.innerHTML = '<i data-lucide="copy"></i>';
+        btnCopy.addEventListener('click', (e) => this.copyDaySchedule(dateKey, e));
+        actionsEl.appendChild(btnCopy);
+
+        const btnPaste = document.createElement('button');
+        btnPaste.type = 'button';
+        btnPaste.className = `btn-day-action btn-paste-day ${hasCopied ? '' : 'disabled'}`;
+        btnPaste.title = hasCopied ? `Colar horário do dia ${this.copiedDayData.dayNumber} aqui` : 'Nenhum horário copiado ainda';
+        btnPaste.innerHTML = '<i data-lucide="clipboard-paste"></i>';
+        btnPaste.addEventListener('click', (e) => this.pasteDaySchedule(dateKey, e));
+        actionsEl.appendChild(btnPaste);
+
+        topbarEl.appendChild(actionsEl);
+      }
+
+      dayCell.appendChild(topbarEl);
+
+      const slotsContainer = document.createElement('div');
+      slotsContainer.className = 'day-slots-container';
+
+      for (let turnIndex = 0; turnIndex < 3; turnIndex++) {
+        const workersInTurn = normalizedSlots[turnIndex];
+        const slotEl = document.createElement('div');
+        slotEl.dataset.turnIndex = turnIndex;
+        slotEl.dataset.dateKey = dateKey;
+
+        if (workersInTurn.length === 0) {
+          slotEl.className = 'slot-item empty-slot';
+          slotEl.innerHTML = '<span class="empty-dash">——————</span>';
+        } else {
+          slotEl.className = 'slot-item slot-turn-multi';
+          const chipsElements = workersInTurn.map((w, wIdx) => {
+            const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
+            return `<span class="worker-chip ${colorClass}" draggable="${this.store.isAdmin()}" data-emp="${w.employeeName}" data-color="${w.color || 'NORMAL'}" data-widx="${wIdx}" data-turn="${turnIndex}" data-date="${dateKey}">${w.employeeName}</span>`;
+          }).join('<span class="slot-slash">/</span>');
+          slotEl.innerHTML = chipsElements;
+        }
+
+        if (this.store.isAdmin()) {
+          this.attachSlotDragAndDrop(slotEl, dateKey, turnIndex);
+        }
+
+        slotsContainer.appendChild(slotEl);
+      }
+
+      dayCell.appendChild(slotsContainer);
+
+      dayCell.addEventListener('click', () => {
+        if (this.store.isAdmin()) {
+          if (this.hasJustDragged) {
+            this.hasJustDragged = false;
+            return;
+          }
+          this.openEditSlotModal(dateKey, rawDayData);
+        }
+      });
+
+      gridEl.appendChild(dayCell);
+    }
+
+    const totalRenderedCells = firstDayIndex + totalDaysInMonth;
+    const targetTotalCells = totalRenderedCells > 35 ? 42 : 35;
+    const remainingCells = targetTotalCells - totalRenderedCells;
+    for (let i = 0; i < remainingCells; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day-cell other-month';
+      gridEl.appendChild(emptyCell);
+    }
+  }
+
+  attachSlotDragAndDrop(slotEl, dateKey, turnIndex) {
+    const chips = slotEl.querySelectorAll('.worker-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        this.draggedWorker = {
+          dateKey: chip.dataset.date,
+          turnIndex: parseInt(chip.dataset.turn, 10),
+          workerIndex: parseInt(chip.dataset.widx, 10),
+          employeeName: chip.dataset.emp,
+          color: chip.dataset.color
+        };
+        chip.classList.add('chip-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', chip.dataset.emp);
+      });
+
+      chip.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        chip.classList.remove('chip-dragging');
+        document.querySelectorAll('.slot-item').forEach(s => s.classList.remove('slot-drag-hover'));
+        setTimeout(() => { this.draggedWorker = null; }, 50);
+      });
+    });
+
+    // 2. Soltar no Turno (Slot)
+    slotEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (e.shiftKey) {
+        slotEl.classList.add('slot-drag-group');
+        slotEl.classList.remove('slot-drag-hover');
+      } else {
+        slotEl.classList.add('slot-drag-hover');
+        slotEl.classList.remove('slot-drag-group');
+      }
+    });
+
+    slotEl.addEventListener('dragleave', (e) => {
+      e.stopPropagation();
+      slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+    });
+
+    slotEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+
+      if (!this.draggedWorker) return;
+
+      this.hasJustDragged = true;
+      const targetDateKey = slotEl.dataset.dateKey;
+      const targetTurnIndex = parseInt(slotEl.dataset.turnIndex, 10);
+      const isGrouping = !!e.shiftKey;
+
+      this.moveOrSwapWorker(this.draggedWorker, targetDateKey, targetTurnIndex, isGrouping);
+    });
+  }
+
+  moveOrSwapWorker(source, targetDateKey, targetTurnIndex, isGrouping = false) {
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days) return;
+
+    const sourceDay = schedule.days[source.dateKey];
+    const targetDay = schedule.days[targetDateKey];
+    if (!sourceDay || !targetDay) return;
+
+    if (source.dateKey === targetDateKey && source.turnIndex === targetTurnIndex) return;
+
+    const sourceNormalized = this.normalizeDaySlots(sourceDay.slots);
+    const targetNormalized = (source.dateKey === targetDateKey) ? sourceNormalized : this.normalizeDaySlots(targetDay.slots);
+
+    const sourceWorkers = sourceNormalized[source.turnIndex];
+    const targetWorkers = targetNormalized[targetTurnIndex];
+
+    const movedWorker = sourceWorkers.splice(source.workerIndex, 1)[0] || { employeeName: source.employeeName, color: source.color || 'NORMAL' };
+
+    if (isGrouping) {
+      // AGRUPAR / JUNTAR (Com Shift)
+      const alreadyInTarget = targetWorkers.some(w => w.employeeName === movedWorker.employeeName);
+      if (!alreadyInTarget) {
+        targetWorkers.push(movedWorker);
+      }
+      window.app?.showToast(`➕ ${movedWorker.employeeName} agrupado(a) no ${targetTurnIndex + 1}º Turno!`, 'success');
+    } else {
+      // TROCA (Padrão) OU MOVER SE VAZIO
+      if (targetWorkers.length > 0) {
+        const targetWorker = targetWorkers.shift();
+        targetWorkers.push(movedWorker);
+        sourceWorkers.push(targetWorker);
+        window.app?.showToast(`⇄ Invertido: ${movedWorker.employeeName} ⇄ ${targetWorker.employeeName}!`, 'success');
+      } else {
+        targetWorkers.push(movedWorker);
+        window.app?.showToast(`${movedWorker.employeeName} movido(a) para o ${targetTurnIndex + 1}º Turno!`, 'success');
+      }
+    }
+
+    sourceDay.slots = sourceNormalized.map(wList => ({ workers: wList }));
+    if (source.dateKey !== targetDateKey) {
+      targetDay.slots = targetNormalized.map(wList => ({ workers: wList }));
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+  }
+
+  openEditSlotModal(dateKey, rawDayData) {
+    const [y, m, d] = dateKey.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeekNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+    document.getElementById('edit-slot-date-title').textContent = `Dia ${d} (${dayOfWeekNames[dateObj.getDay()]})`;
+    document.getElementById('edit-slot-desc').textContent = `${d} de ${MONTH_NAMES[parseInt(m, 10) - 1]} de ${y}`;
+    document.getElementById('edit-slot-date').value = dateKey;
+
+    const normalizedSlots = this.normalizeDaySlots(rawDayData.slots);
+
+    for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+      const container = document.getElementById(`shift-${shiftNum}-workers`);
+      if (container) {
+        container.innerHTML = '';
+        const workers = normalizedSlots[shiftNum - 1];
+        if (workers.length === 0) {
+          this.appendPersonToShift(shiftNum, '', 'NORMAL');
+        } else {
+          workers.forEach(w => this.appendPersonToShift(shiftNum, w.employeeName, w.color || 'NORMAL'));
+        }
+      }
+    }
+
+    window.app?.openModal('modal-edit-slot');
+  }
+
+  appendPersonToShift(shiftNum, selectedEmp = '', selectedColor = 'NORMAL') {
+    const container = document.getElementById(`shift-${shiftNum}-workers`);
+    if (!container) return;
+
+    const rowEl = document.createElement('div');
+    rowEl.className = 'shift-worker-row';
+
+    const employees = this.store.getActiveEmployees();
+    let optionsHtml = '<option value="">(Vazio / Folga)</option>';
+    employees.forEach(emp => {
+      optionsHtml += `<option value="${emp.name}" ${emp.name === selectedEmp ? 'selected' : ''}>${emp.name}</option>`;
+    });
+
+    const isExtra = container.children.length > 0;
+
+    rowEl.innerHTML = `
+      <select class="select-input-modern worker-name-select" style="flex: 1 1 auto; min-width: 200px;">
+        ${optionsHtml}
+      </select>
+      <select class="select-input-modern color-select worker-color-select" style="flex: 0 0 135px; width: 135px;">
+        <option value="NORMAL" ${selectedColor === 'NORMAL' ? 'selected' : ''}>Normal</option>
+        <option value="GREEN" ${selectedColor === 'GREEN' ? 'selected' : ''}>Verde (Folga)</option>
+        <option value="RED" ${selectedColor === 'RED' ? 'selected' : ''}>Vermelho (Fim Sem.)</option>
+      </select>
+      ${isExtra ? `
+        <button type="button" class="btn-icon-danger btn-remove-worker" title="Remover" style="width: 32px; height: 32px; flex-shrink: 0;">
+          <i data-lucide="x" style="width: 13px; height: 13px;"></i>
+        </button>
+      ` : ''}
+    `;
+
+    rowEl.querySelector('.btn-remove-worker')?.addEventListener('click', () => rowEl.remove());
+    container.appendChild(rowEl);
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  saveSlotEdit() {
+    const dateKey = document.getElementById('edit-slot-date')?.value;
+    if (!dateKey) return;
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey) || this.scheduler.generateMonthSchedule(this.currentYear, this.currentMonth);
+    if (!schedule.days) schedule.days = {};
+
+    const newSlots = [];
+    for (let shiftNum = 1; shiftNum <= 3; shiftNum++) {
+      const container = document.getElementById(`shift-${shiftNum}-workers`);
+      const rows = container ? container.querySelectorAll('.shift-worker-row') : [];
+      const workers = [];
+      const seen = new Set();
+
+      rows.forEach(row => {
+        const name = row.querySelector('.worker-name-select')?.value.trim();
+        const color = row.querySelector('.worker-color-select')?.value || 'NORMAL';
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          workers.push({ employeeName: name, color: color });
+        }
+      });
+      newSlots.push({ workers: workers });
+    }
+
+    const dayNumber = parseInt(dateKey.split('-')[2], 10);
+    const dateObj = new Date(this.currentYear, this.currentMonth - 1, dayNumber);
+
+    schedule.days[dateKey] = {
+      dayNumber: dayNumber,
+      dayOfWeek: dateObj.getDay(),
+      slots: newSlots
+    };
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    window.app?.closeModal('modal-edit-slot');
+    this.render();
+    window.app?.showToast('Turnos salvos com sucesso!', 'success');
+  }
+
+  clearDaySlots(dateKey) {
+    const yearMonthKey = this.getYearMonthKey();
+    const schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days || !schedule.days[dateKey]) return;
+
+    schedule.days[dateKey].slots = [{ workers: [] }, { workers: [] }, { workers: [] }];
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    window.app?.closeModal('modal-edit-slot');
+    this.render();
+    window.app?.showToast('Dia limpo com sucesso!', 'info');
+  }
+
+  renderFilterOptions() {
+    const filterSelect = document.getElementById('filter-employee');
+    if (!filterSelect) return;
+    const currentValue = filterSelect.value;
+    const employees = this.store.getEmployees();
+
+    filterSelect.innerHTML = '<option value="ALL">Visualizar Todos</option>';
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.name;
+      opt.textContent = `Destacar: ${emp.name}`;
+      if (emp.name === currentValue) opt.selected = true;
+      filterSelect.appendChild(opt);
+    });
+  }
+
+  highlightEmployee(employeeName) {
+    const workerChips = document.querySelectorAll('.calendar-day-cell .worker-chip');
+    if (employeeName === 'ALL' || !employeeName) {
+      workerChips.forEach(chip => chip.classList.remove('highlighted', 'dimmed'));
+      return;
+    }
+    workerChips.forEach(chip => {
+      if (chip.dataset.emp === employeeName) {
+        chip.classList.add('highlighted');
+        chip.classList.remove('dimmed');
+      } else {
+        chip.classList.remove('highlighted');
+        chip.classList.add('dimmed');
+      }
+    });
+  }
+
+  renderMonthlyStats(schedule) {
+    const statsContainer = document.getElementById('monthly-stats-grid');
+    if (!statsContainer) return;
+    statsContainer.innerHTML = '';
+
+    const yearMonthKey = this.getYearMonthKey();
+    const monthEmployees = this.store.getMonthEmployees(yearMonthKey);
+    const counts = {};
+    monthEmployees.forEach(emp => { counts[emp.name] = { totalShifts: 0, emp }; });
+
+    if (schedule && schedule.days) {
+      Object.values(schedule.days).forEach(day => {
+        if (day && day.slots) {
+          const normalized = this.normalizeDaySlots(day.slots);
+          const dayEmpsWorked = new Set();
+          normalized.forEach(turnWorkers => {
+            turnWorkers.forEach(w => {
+              // Folga (cor GREEN) NÃO conta como dia de trabalho
+              if (w.employeeName && counts[w.employeeName] && w.color !== 'GREEN') {
+                if (!dayEmpsWorked.has(w.employeeName)) {
+                  dayEmpsWorked.add(w.employeeName);
+                  counts[w.employeeName].totalShifts++;
+                }
+              }
+            });
+          });
+        }
+      });
+    }
+
+    monthEmployees.forEach(emp => {
+      const stat = counts[emp.name] || { totalShifts: 0, emp };
+      const chip = document.createElement('div');
+      chip.className = 'stat-chip-pill';
+      chip.innerHTML = `
+        <span class="stat-chip-dot" style="background-color: ${emp.color || '#10b981'};"></span>
+        <span>${emp.name}:</span>
+        <span class="stat-chip-badge">${stat.totalShifts} dias</span>
+      `;
+      statsContainer.appendChild(chip);
+    });
+  }
+
+  openMonthTeamModal() {
+    const yearMonthKey = this.getYearMonthKey();
+    const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
+    
+    const titleEl = document.getElementById('month-team-modal-title');
+    if (titleEl) titleEl.textContent = `Equipe de ${monthTitle}`;
+
+    const container = document.getElementById('month-team-checklist-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const allActiveEmployees = this.store.getActiveEmployees();
+    const selectedIds = this.store.getMonthSelectedEmployeeIds(yearMonthKey);
+
+    const updateCount = () => {
+      const checkedBoxes = container.querySelectorAll('.month-emp-checkbox:checked');
+      const badge = document.getElementById('month-team-count-badge');
+      if (badge) badge.textContent = `${checkedBoxes.length} colaboradores selecionados`;
+    };
+
+    allActiveEmployees.forEach(emp => {
+      const isChecked = selectedIds.includes(emp.id);
+      const itemEl = document.createElement('label');
+      itemEl.className = 'month-team-check-row';
+      itemEl.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-xs); border: 1px solid var(--border-app); cursor: pointer; transition: all 0.2s ease;';
+
+      itemEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <input type="checkbox" class="month-emp-checkbox" value="${emp.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
+          <div class="emp-avatar-sm" style="background-color: ${emp.color || '#10b981'}; width: 28px; height: 28px; font-size: 0.75rem;">
+            ${emp.name.charAt(0)}
+          </div>
+          <div>
+            <h4 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #f8fafc;">${emp.name}</h4>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">${emp.role || 'Balconista'}</span>
+          </div>
+        </div>
+        <span style="font-size: 0.72rem; color: ${emp.color || '#10b981'}; font-weight: 600;">
+          ${emp.prefShift === 'NIGHT_WEEKDAY' ? 'Noite Seg-Qui' : (emp.prefShift === 'PLANTONISTA' ? 'Plantonista' : 'Rodízio')}
+        </span>
+      `;
+
+      itemEl.querySelector('.month-emp-checkbox')?.addEventListener('change', updateCount);
+      container.appendChild(itemEl);
+    });
+
+    updateCount();
+
+    const btnSelectAll = document.getElementById('btn-select-all-month-team');
+    if (btnSelectAll) {
+      btnSelectAll.onclick = () => {
+        container.querySelectorAll('.month-emp-checkbox').forEach(cb => { cb.checked = true; });
+        updateCount();
+      };
+    }
+
+    const btnUnselectAll = document.getElementById('btn-unselect-all-month-team');
+    if (btnUnselectAll) {
+      btnUnselectAll.onclick = () => {
+        container.querySelectorAll('.month-emp-checkbox').forEach(cb => { cb.checked = false; });
+        updateCount();
+      };
+    }
+
+    window.app?.openModal('modal-month-team');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  saveMonthTeam() {
+    const container = document.getElementById('month-team-checklist-container');
+    if (!container) return;
+
+    const checkedBoxes = container.querySelectorAll('.month-emp-checkbox:checked');
+    const checkedIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+    if (checkedIds.length === 0) {
+      window.app?.showToast('Selecione pelo menos 1 colaborador para a equipe deste mês.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    this.store.setMonthSelectedEmployeeIds(yearMonthKey, checkedIds);
+    window.app?.closeModal('modal-month-team');
+    this.render();
+    window.app?.showToast(`Equipe de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} atualizada (${checkedIds.length} colaboradores)! Clique em 'Gerar Escala' para gerar.`, 'success');
+  }
+
+  copyDaySchedule(dateKey, e) {
+    if (e) e.stopPropagation();
+    const yearMonthKey = this.getYearMonthKey();
+    const schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule || !schedule.days || !schedule.days[dateKey]) {
+      window.app?.showToast('Não há horários salvos neste dia para copiar.', 'warning');
+      return;
+    }
+
+    const dayData = schedule.days[dateKey];
+    const normalizedSlots = this.normalizeDaySlots(dayData.slots);
+    const dayNumber = parseInt(dateKey.split('-')[2], 10);
+
+    this.copiedDayData = {
+      dateKey: dateKey,
+      dayNumber: dayNumber,
+      slots: JSON.parse(JSON.stringify(normalizedSlots))
+    };
+
+    window.copiedDayData = this.copiedDayData;
+    this.updateCopyPasteUI();
+    this.render();
+    window.app?.showToast(`📋 Horário do dia ${String(dayNumber).padStart(2, '0')} copiado! Clique em 'Colar' nos dias desejados.`, 'info');
+  }
+
+  pasteDaySchedule(targetDateKey, e) {
+    if (e) e.stopPropagation();
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado ainda. Clique em "Copiar" em algum dia primeiro.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) {
+      schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    }
+    if (!schedule.days) schedule.days = {};
+
+    const targetDayNumber = parseInt(targetDateKey.split('-')[2], 10);
+    const dateObj = new Date(this.currentYear, this.currentMonth - 1, targetDayNumber);
+
+    const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+      workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+    }));
+
+    schedule.days[targetDateKey] = {
+      dayNumber: targetDayNumber,
+      dayOfWeek: dateObj.getDay(),
+      slots: clonedSlots
+    };
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado com sucesso no dia ${String(targetDayNumber).padStart(2, '0')}!`, 'success');
+  }
+
+  pasteToWeekdaysOfWeek() {
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado.', 'warning');
+      return;
+    }
+
+    const parts = this.copiedDayData.dateKey.split('-');
+    const sourceYear = parseInt(parts[0], 10);
+    const sourceMonth = parseInt(parts[1], 10);
+    const sourceDay = parseInt(parts[2], 10);
+    const sourceDate = new Date(sourceYear, sourceMonth - 1, sourceDay);
+    const dayOfWeek = sourceDate.getDay();
+    const diffToMon = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+    const mondayDate = new Date(sourceDate);
+    mondayDate.setDate(sourceDate.getDate() - diffToMon);
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    if (!schedule.days) schedule.days = {};
+
+    let countPasted = 0;
+    for (let i = 0; i < 5; i++) {
+      const curDate = new Date(mondayDate);
+      curDate.setDate(mondayDate.getDate() + i);
+
+      if (curDate.getMonth() + 1 === this.currentMonth && curDate.getFullYear() === this.currentYear) {
+        const dNum = curDate.getDate();
+        const dKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+        
+        const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+          workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+        }));
+
+        schedule.days[dKey] = {
+          dayNumber: dNum,
+          dayOfWeek: curDate.getDay(),
+          slots: clonedSlots
+        };
+        countPasted++;
+      }
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado em ${countPasted} dias úteis desta semana!`, 'success');
+  }
+
+  pasteToAllWeekdaysOfMonth() {
+    if (!this.copiedDayData || !this.copiedDayData.slots) {
+      window.app?.showToast('Nenhum horário copiado.', 'warning');
+      return;
+    }
+
+    const yearMonthKey = this.getYearMonthKey();
+    let schedule = this.store.getMonthSchedule(yearMonthKey);
+    if (!schedule) schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
+    if (!schedule.days) schedule.days = {};
+
+    const totalDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
+    let countPasted = 0;
+
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
+      const dow = dateObj.getDay();
+      if (dow >= 1 && dow <= 5) {
+        const dKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const clonedSlots = this.copiedDayData.slots.map(turnWorkers => ({
+          workers: turnWorkers.map(w => ({ employeeName: w.employeeName, color: w.color || 'NORMAL' }))
+        }));
+
+        schedule.days[dKey] = {
+          dayNumber: day,
+          dayOfWeek: dow,
+          slots: clonedSlots
+        };
+        countPasted++;
+      }
+    }
+
+    this.store.saveMonthSchedule(yearMonthKey, schedule);
+    this.render();
+    window.app?.showToast(`📥 Horário colado em todos os ${countPasted} dias úteis do mês!`, 'success');
+  }
+
+  cancelCopy() {
+    this.copiedDayData = null;
+    window.copiedDayData = null;
+    this.updateCopyPasteUI();
+    this.render();
+    window.app?.showToast('Cópia cancelada.', 'info');
+  }
+
+  updateCopyPasteUI() {
+    const toolbar = document.getElementById('copy-paste-toolbar');
+    const label = document.getElementById('copied-day-label');
+    const modalPasteBtn = document.getElementById('btn-modal-paste-day');
+
+    if (this.copiedDayData && this.copiedDayData.slots) {
+      if (toolbar) {
+        toolbar.classList.remove('hidden');
+        if (label) label.textContent = `Dia ${String(this.copiedDayData.dayNumber).padStart(2, '0')}`;
+      }
+      if (modalPasteBtn) {
+        modalPasteBtn.removeAttribute('disabled');
+        modalPasteBtn.classList.remove('disabled');
+      }
+    } else {
+      if (toolbar) {
+        toolbar.classList.add('hidden');
+      }
+      if (modalPasteBtn) {
+        modalPasteBtn.setAttribute('disabled', 'true');
+        modalPasteBtn.classList.add('disabled');
+      }
+    }
+  }
+}
+
+/**
+ * EMPLOYEES.JS - Gestão de Funcionários
+ */
+class EmployeeManager {
+  constructor(store) {
+    this.store = store;
+    this.init();
+  }
+
+  init() {
+    this.bindEvents();
+    this.render();
+  }
+
+  bindEvents() {
+    document.getElementById('btn-add-employee')?.addEventListener('click', () => this.openAddModal());
+    document.getElementById('btn-reset-default-team')?.addEventListener('click', () => {
+      if (confirm('Deseja restaurar a equipe padrão (MAURICIO, LILIAN e DJANE)?')) {
+        this.store.resetDefaultEmployees();
+        this.render();
+        if (window.calendarManager) {
+          window.calendarManager.renderFilterOptions();
+          window.calendarManager.generateAndSaveCurrentMonth();
+        }
+        window.app?.showToast('Equipe padrão restaurada!', 'success');
+      }
+    });
+
+    document.getElementById('form-employee')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveEmployee();
+    });
+
+    const colorInput = document.getElementById('employee-color');
+    const colorPreview = document.getElementById('employee-color-preview');
+    if (colorInput && colorPreview) {
+      colorInput.addEventListener('input', (e) => { colorPreview.textContent = e.target.value; });
+    }
+
+    const prefShiftSelect = document.getElementById('employee-pref-shift');
+    prefShiftSelect?.addEventListener('change', (e) => {
+      const plantonistaContainer = document.getElementById('plantonista-options-container');
+      if (plantonistaContainer) {
+        if (e.target.value === 'PLANTONISTA') plantonistaContainer.classList.remove('hidden');
+        else plantonistaContainer.classList.add('hidden');
+      }
+    });
+  }
+
+  openAddModal() {
+    document.getElementById('employee-modal-title').textContent = 'Novo Colaborador';
+    document.getElementById('employee-id').value = '';
+    document.getElementById('employee-name').value = '';
+    document.getElementById('employee-pref-shift').value = 'NONE';
+    document.getElementById('employee-color').value = '#10b981';
+    document.getElementById('employee-color-preview').textContent = '#10b981';
+    document.getElementById('employee-status').value = 'ACTIVE';
+
+    document.getElementById('plantonista-options-container')?.classList.add('hidden');
+    document.getElementById('plantao-day-fri').checked = false;
+    document.getElementById('plantao-day-sat').checked = true;
+    document.getElementById('plantao-day-sun').checked = false;
+    document.getElementById('plantao-shift-select').value = '1';
+
+    window.app?.openModal('modal-employee');
+  }
+
+  openEditModal(emp) {
+    document.getElementById('employee-modal-title').textContent = `Editar ${emp.name}`;
+    document.getElementById('employee-id').value = emp.id;
+    document.getElementById('employee-name').value = emp.name;
+    document.getElementById('employee-pref-shift').value = emp.prefShift || 'NONE';
+    document.getElementById('employee-color').value = emp.color || '#10b981';
+    document.getElementById('employee-color-preview').textContent = emp.color || '#10b981';
+    document.getElementById('employee-status').value = emp.status || 'ACTIVE';
+
+    const plantonistaContainer = document.getElementById('plantonista-options-container');
+    if (emp.prefShift === 'PLANTONISTA') {
+      plantonistaContainer?.classList.remove('hidden');
+      const days = emp.onCallDays || ['SAT'];
+      document.getElementById('plantao-day-fri').checked = days.includes('FRI');
+      document.getElementById('plantao-day-sat').checked = days.includes('SAT');
+      document.getElementById('plantao-day-sun').checked = days.includes('SUN');
+      document.getElementById('plantao-shift-select').value = emp.onCallShift || '1';
+    } else {
+      plantonistaContainer?.classList.add('hidden');
+    }
+
+    window.app?.openModal('modal-employee');
+  }
+
+  saveEmployee() {
+    const id = document.getElementById('employee-id').value;
+    const name = document.getElementById('employee-name').value.trim();
+    const prefShift = document.getElementById('employee-pref-shift').value;
+    const color = document.getElementById('employee-color').value;
+    const status = document.getElementById('employee-status').value;
+
+    if (!name) {
+      window.app?.showToast('Informe o nome do funcionário.', 'error');
+      return;
+    }
+
+    const onCallDays = [];
+    let onCallShift = '1';
+    if (prefShift === 'PLANTONISTA') {
+      if (document.getElementById('plantao-day-fri')?.checked) onCallDays.push('FRI');
+      if (document.getElementById('plantao-day-sat')?.checked) onCallDays.push('SAT');
+      if (document.getElementById('plantao-day-sun')?.checked) onCallDays.push('SUN');
+      onCallShift = document.getElementById('plantao-shift-select')?.value || '1';
+    }
+
+    const employeeData = {
+      id: id || null,
+      name: name.toUpperCase(),
+      prefShift: prefShift,
+      onCallDays: onCallDays,
+      onCallShift: onCallShift,
+      color: color,
+      status: status
+    };
+
+    this.store.saveEmployee(employeeData);
+    window.app?.closeModal('modal-employee');
+    this.render();
+
+    if (window.calendarManager) {
+      window.calendarManager.renderFilterOptions();
+      window.calendarManager.render();
+    }
+    window.app?.showToast(`Colaborador ${employeeData.name} salvo!`, 'success');
+  }
+
+  deleteEmployee(id, name) {
+    if (confirm(`Deseja inativar o colaborador ${name}? (Ele não será mais escalado automaticamente, mas o histórico de escalas passadas é mantido)`)) {
+      this.store.deleteEmployee(id);
+      this.render();
+      if (window.calendarManager) {
+        window.calendarManager.renderFilterOptions();
+        window.calendarManager.render();
+      }
+      window.app?.showToast(`Colaborador ${name} inativado com sucesso.`, 'info');
+    }
+  }
+
+  toggleEmployeeStatus(id, name) {
+    this.store.toggleEmployeeStatus(id);
+    this.render();
+    if (window.calendarManager) {
+      window.calendarManager.renderFilterOptions();
+      window.calendarManager.render();
+    }
+    const emp = this.store.getEmployeeById(id);
+    const statusText = emp?.status === 'ACTIVE' ? 'ativado' : 'inativado';
+    window.app?.showToast(`Colaborador ${name} ${statusText}.`, 'info');
+  }
+
+  render() {
+    const container = document.getElementById('employees-list-container');
+    if (!container) return;
+
+    const employees = this.store.getEmployees();
+    container.innerHTML = '';
+
+    const prefLabels = {
+      'NONE': 'Giro / Rodízio entre turnos',
+      'SHIFT_1': '1º Turno (Manhã)',
+      'SHIFT_2': '2º Turno (Alternado)',
+      'SHIFT_3': '3º Turno (Noite)',
+      'NIGHT_WEEKDAY': 'Fixo Noite Seg-Qui / Manhã Sexta'
+    };
+
+    employees.forEach(emp => {
+      const row = document.createElement('div');
+      const isActive = (emp.status === 'ACTIVE');
+      row.className = `employee-row-card ${isActive ? '' : 'is-inactive'}`;
+      if (!isActive) row.style.opacity = '0.65';
+
+      let shiftDescription = prefLabels[emp.prefShift] || 'Giro / Rodízio';
+      if (emp.prefShift === 'PLANTONISTA') {
+        const daysMap = { 'FRI': 'Sexta', 'SAT': 'Sábado', 'SUN': 'Domingo' };
+        const daysStr = (emp.onCallDays || []).map(d => daysMap[d] || d).join(', ') || 'Fim de Semana';
+        shiftDescription = `Plantonista (${daysStr})`;
+      }
+
+      row.innerHTML = `
+        <div class="emp-row-left">
+          <div class="emp-avatar-sm" style="background-color: ${emp.color || '#10b981'};">
+            ${emp.name.charAt(0)}
+          </div>
+          <div class="emp-row-info">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <h4 style="margin: 0;">${emp.name}</h4>
+              <span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}" style="font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; background: ${isActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)'}; color: ${isActive ? '#10b981' : '#94a3b8'}; border: 1px solid ${isActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(148, 163, 184, 0.3)'};">
+                ${isActive ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+            <span>${shiftDescription}</span>
+          </div>
+        </div>
+        <div class="emp-row-actions" style="display: flex; gap: 0.35rem; align-items: center;">
+          <button class="btn btn-secondary-pill btn-toggle-status-emp" data-id="${emp.id}" title="${isActive ? 'Desativar' : 'Ativar'}" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
+            <i data-lucide="${isActive ? 'user-x' : 'user-check'}" style="width: 12px; height: 12px;"></i> ${isActive ? 'Desativar' : 'Ativar'}
+          </button>
+          <button class="btn btn-secondary-pill btn-edit-emp" data-id="${emp.id}" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">
+            <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> Editar
+          </button>
+          <button class="btn-icon-danger btn-delete-emp" data-id="${emp.id}" data-name="${emp.name}" title="Inativar Colaborador" style="width: 26px; height: 26px;">
+            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+          </button>
+        </div>
+      `;
+
+      row.querySelector('.btn-edit-emp')?.addEventListener('click', () => this.openEditModal(emp));
+      row.querySelector('.btn-toggle-status-emp')?.addEventListener('click', () => this.toggleEmployeeStatus(emp.id, emp.name));
+      row.querySelector('.btn-delete-emp')?.addEventListener('click', () => this.deleteEmployee(emp.id, emp.name));
+      container.appendChild(row);
+    });
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  }
+}
+
+/**
+ * EXPORT.JS - Exportação
+ */
+class ExportManager {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    const btnMenu = document.getElementById('btn-export-menu');
+    const dropdown = document.getElementById('export-dropdown');
+    if (btnMenu && dropdown) {
+      btnMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', () => dropdown.classList.add('hidden'));
+    }
+
+    document.getElementById('btn-print')?.addEventListener('click', () => window.print());
+    document.getElementById('btn-export-img')?.addEventListener('click', () => this.exportAsImage());
+    document.getElementById('btn-export-pdf')?.addEventListener('click', () => this.exportAsPDF());
+  }
+
+  getFilename(ext) {
+    const monthTitle = document.getElementById('current-month-display').textContent.replace(/[\/\s]/g, '-');
+    return `Escala-Farmacia-${monthTitle}.${ext}`;
+  }
+
+  async exportAsImage() {
+    const element = document.querySelector('.calendar-card');
+    if (!element) return;
+    window.app.showToast('Gerando imagem em alta resolução...', 'info');
+    try {
+      const canvas = await window.html2canvas(element, { scale: 2.5, useCORS: true, backgroundColor: '#090d16', logging: false });
+      const link = document.createElement('a');
+      link.download = this.getFilename('png');
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      window.app.showToast('Imagem baixada com sucesso!', 'success');
+    } catch (err) {
+      window.app.showToast('Erro ao exportar imagem.', 'error');
+    }
+  }
+
+  async exportAsPDF() {
+    const element = document.querySelector('.calendar-card');
+    if (!element) return;
+    window.app.showToast('Gerando documento PDF...', 'info');
+    try {
+      const canvas = await window.html2canvas(element, { scale: 2.5, useCORS: true, backgroundColor: '#090d16', logging: false });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const printableWidth = pageWidth - (margin * 2);
+      const imgHeight = (canvas.height * printableWidth) / canvas.width;
+      pdf.setFillColor(9, 13, 22);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      pdf.addImage(imgData, 'PNG', margin, margin, printableWidth, Math.min(imgHeight, pageHeight - (margin * 2)));
+      pdf.save(this.getFilename('pdf'));
+      window.app.showToast('PDF baixado com sucesso!', 'success');
+    } catch (err) {
+      window.app.showToast('Erro ao exportar PDF.', 'error');
+    }
+  }
+}
+
+/**
+ * APP.JS - Inicializador
+ */
+class App {
+  constructor() {
+    this.store = window.store;
+    this.scheduler = window.scheduler;
+    window.app = this;
+    this.init();
+  }
+
+  init() {
+    this.bindNavigation();
+    this.bindModals();
+    this.bindAdminAuth();
+    this.bindTopControls();
+
+    window.calendarManager = new CalendarManager(this.store, this.scheduler);
+    window.employeeManager = new EmployeeManager(this.store);
+    window.exportManager = new ExportManager();
+
+    this.updateAdminUI();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  bindTopControls() {
+    // Observação: btn-month-team, btn-auto-generate e btn-clear-month são gerenciados por CalendarManager
+    document.getElementById('btn-manage-team')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.employeeManager?.render();
+      this.openModal('modal-team-manager');
+    });
+  }
+
+  bindNavigation() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(section => section.classList.remove('active'));
+        document.getElementById(btn.dataset.tab)?.classList.add('active');
+        if (window.lucide) window.lucide.createIcons();
+      });
+    });
+  }
+
+  bindModals() {
+    document.querySelectorAll('.btn-close-modal, [data-modal]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const modalId = btn.dataset.modal;
+        if (modalId && (btn.classList.contains('btn-close-modal') || btn.classList.contains('btn-ghost'))) {
+          this.closeModal(modalId);
+        }
+      });
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.add('hidden');
+      });
+    });
+  }
+
+  openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.remove('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  closeModal(modalId) {
+    document.getElementById(modalId)?.classList.add('hidden');
+  }
+
+  bindAdminAuth() {
+    document.getElementById('btn-toggle-admin')?.addEventListener('click', () => {
+      if (this.store.isAdmin()) {
+        this.store.logoutAdmin();
+        this.updateAdminUI();
+        this.showToast('Saiu do Modo Admin.', 'info');
+      } else {
+        const pinInput = document.getElementById('admin-pin');
+        if (pinInput) pinInput.value = '';
+        document.getElementById('admin-login-error')?.classList.add('hidden');
+        this.openModal('modal-admin-login');
+      }
+    });
+
+    document.getElementById('form-admin-login')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('admin-pin')?.value;
+      if (this.store.loginAdmin(pin)) {
+        this.closeModal('modal-admin-login');
+        this.updateAdminUI();
+        this.showToast('Modo Administrador ativado!', 'success');
+      } else {
+        document.getElementById('admin-login-error')?.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('form-change-pin')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const oldPin = document.getElementById('old-pin')?.value;
+      const newPin = document.getElementById('new-pin')?.value;
+      if (this.store.loginAdmin(oldPin)) {
+        if (this.store.setAdminPin(newPin)) {
+          this.closeModal('modal-change-pin');
+          this.showToast('Senha de Admin alterada com sucesso!', 'success');
+        } else {
+          this.showToast('A nova senha deve ter no mínimo 4 dígitos.', 'error');
+        }
+      } else {
+        this.showToast('Senha atual incorreta.', 'error');
+      }
+    });
+
+    // Configurações do Supabase Cloud
+    document.getElementById('btn-supabase-config')?.addEventListener('click', () => {
+      const creds = window.supabaseManager?.getCredentials() || { url: '', key: '' };
+      const urlInput = document.getElementById('supabase-url-input');
+      const keyInput = document.getElementById('supabase-key-input');
+      const btnDisconnect = document.getElementById('btn-disconnect-supabase');
+      const badge = document.getElementById('supabase-status-badge');
+
+      if (urlInput) urlInput.value = creds.url;
+      if (keyInput) keyInput.value = creds.key;
+
+      if (window.supabaseManager?.isConfigured()) {
+        if (btnDisconnect) btnDisconnect.style.display = 'inline-flex';
+        if (badge) {
+          badge.style.display = 'block';
+          badge.style.background = 'rgba(16, 185, 129, 0.15)';
+          badge.style.color = '#10b981';
+          badge.textContent = 'Status: Conectado à Nuvem';
+        }
+      } else {
+        if (btnDisconnect) btnDisconnect.style.display = 'none';
+        if (badge) {
+          badge.style.display = 'none';
+        }
+      }
+      this.openModal('modal-supabase-config');
+    });
+
+    document.getElementById('form-supabase-config')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = document.getElementById('supabase-url-input')?.value;
+      const key = document.getElementById('supabase-key-input')?.value;
+      
+      if (window.supabaseManager) {
+        const ok = window.supabaseManager.saveCredentials(url, key);
+        if (ok) {
+          await this.store.syncFromSupabase();
+          window.calendarManager?.render();
+          this.closeModal('modal-supabase-config');
+          this.showToast('Conectado ao Supabase com sucesso!', 'success');
+        } else {
+          this.showToast('Não foi possível conectar com as credenciais informadas.', 'error');
+        }
+      }
+    });
+
+    document.getElementById('btn-disconnect-supabase')?.addEventListener('click', () => {
+      if (window.supabaseManager) {
+        window.supabaseManager.saveCredentials('', '');
+        this.closeModal('modal-supabase-config');
+        this.showToast('Supabase desconectado.', 'info');
+      }
+    });
+  }
+
+  updateAdminUI() {
+    const isAdmin = this.store.isAdmin();
+    document.body.classList.toggle('is-admin', isAdmin);
+    const adminToggleBtn = document.getElementById('btn-toggle-admin');
+
+    if (adminToggleBtn) {
+      if (isAdmin) {
+        adminToggleBtn.classList.add('active');
+        adminToggleBtn.innerHTML = '<i data-lucide="log-out"></i><span>Sair do Admin</span>';
+      } else {
+        adminToggleBtn.classList.remove('active');
+        adminToggleBtn.innerHTML = '<i data-lucide="lock"></i><span>Admin</span>';
+      }
+    }
+
+    document.querySelectorAll('.admin-only').forEach(el => {
+      if (isAdmin) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    });
+
+    window.calendarManager?.render();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const iconMap = {
+      success: 'check-circle',
+      error: 'alert-circle',
+      info: 'info'
+    };
+
+    toast.innerHTML = `
+      <i data-lucide="${iconMap[type] || 'info'}"></i>
+      <span>${message}</span>
+    `;
+
+    container.appendChild(toast);
+    if (window.lucide) window.lucide.createIcons();
+
+    setTimeout(() => {
+      toast.classList.add('toast-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+}
+
+// Inicialização automática ao carregar o documento
+document.addEventListener('DOMContentLoaded', () => {
+  new App();
+});
+  </script>
+</body>
+</html>
