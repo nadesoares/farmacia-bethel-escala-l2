@@ -12,9 +12,10 @@ class CalendarManager {
     this.store = store;
     this.scheduler = scheduler;
     
-    // Inicia no mês padrão de referência (Agosto de 2026)
-    this.currentYear = 2026;
-    this.currentMonth = 8;
+    // Inicia automaticamente no mês e ano atuais
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
 
     this.draggedWorker = null;
     this.hasJustDragged = false;
