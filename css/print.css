@@ -1,0 +1,142 @@
+/* ==========================================================================
+   PRINT CSS (A4 LANDSCAPE EXACT FIT MATCHING ORIGINAL SPREADSHEET)
+   ========================================================================== */
+
+@page {
+  size: A4 landscape;
+  margin: 8mm 10mm;
+}
+
+@media print {
+  /* Hide all UI elements that shouldn't be printed */
+  .no-print,
+  .app-header,
+  .action-bar,
+  .legend-bar,
+  .drag-hint-banner,
+  .summary-card,
+  .modal-overlay,
+  .toast-container,
+  .tab-btn,
+  #employees-tab,
+  #shifts-info-tab {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .calendar-wrapper {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .printable-calendar {
+    width: 100% !important;
+    min-width: 100% !important;
+    border: 2px solid #000000 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sheet-title-banner {
+    padding: 6px !important;
+    border-bottom: 2px solid #000000 !important;
+  }
+
+  .sheet-title-banner h2 {
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    color: #000000 !important;
+    letter-spacing: 0.05em !important;
+  }
+
+  .calendar-header-row {
+    border-bottom: 2px solid #000000 !important;
+  }
+
+  .col-header {
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    padding: 4px 2px !important;
+    border-right: 1px solid #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .weekday-col {
+    background-color: #d9ead3 !important;
+    color: #000000 !important;
+  }
+
+  .weekend-col {
+    background-color: #f4cccc !important;
+    color: #000000 !important;
+  }
+
+  .calendar-day-cell {
+    border-right: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+    min-height: 85px !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  .calendar-day-cell.other-month {
+    background: #fbfbfb !important;
+  }
+
+  .day-header {
+    font-size: 10.5pt !important;
+    font-weight: 700 !important;
+    padding: 2px 4px !important;
+    border-bottom: 1px solid #000000 !important;
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .calendar-day-cell.is-weekend .day-header {
+    background-color: #fbeae5 !important;
+  }
+
+  .day-slots-container {
+    padding: 4px 2px !important;
+    gap: 3px !important;
+  }
+
+  .slot-item {
+    font-size: 9.5pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+  }
+
+  .slot-item.color-normal {
+    color: #000000 !important;
+  }
+
+  .slot-item.color-green {
+    color: #274e13 !important;
+  }
+
+  .slot-item.color-red {
+    color: #cc0000 !important;
+  }
+}
