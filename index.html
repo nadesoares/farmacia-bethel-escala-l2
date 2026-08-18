@@ -2683,61 +2683,7 @@ class App {
       } else {
         this.showToast('Senha atual incorreta.', 'error');
       }
-    });
-
-    // Configurações do Supabase Cloud
-    document.getElementById('btn-supabase-config')?.addEventListener('click', () => {
-      const creds = window.supabaseManager?.getCredentials() || { url: '', key: '' };
-      const urlInput = document.getElementById('supabase-url-input');
-      const keyInput = document.getElementById('supabase-key-input');
-      const btnDisconnect = document.getElementById('btn-disconnect-supabase');
-      const badge = document.getElementById('supabase-status-badge');
-
-      if (urlInput) urlInput.value = creds.url;
-      if (keyInput) keyInput.value = creds.key;
-
-      if (window.supabaseManager?.isConfigured()) {
-        if (btnDisconnect) btnDisconnect.style.display = 'inline-flex';
-        if (badge) {
-          badge.style.display = 'block';
-          badge.style.background = 'rgba(16, 185, 129, 0.15)';
-          badge.style.color = '#10b981';
-          badge.textContent = 'Status: Conectado à Nuvem';
-        }
-      } else {
-        if (btnDisconnect) btnDisconnect.style.display = 'none';
-        if (badge) {
-          badge.style.display = 'none';
-        }
-      }
-      this.openModal('modal-supabase-config');
-    });
-
-    document.getElementById('form-supabase-config')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const url = document.getElementById('supabase-url-input')?.value;
-      const key = document.getElementById('supabase-key-input')?.value;
-      
-      if (window.supabaseManager) {
-        const ok = window.supabaseManager.saveCredentials(url, key);
-        if (ok) {
-          await this.store.syncFromSupabase();
-          window.calendarManager?.render();
-          this.closeModal('modal-supabase-config');
-          this.showToast('Conectado ao Supabase com sucesso!', 'success');
-        } else {
-          this.showToast('Não foi possível conectar com as credenciais informadas.', 'error');
-        }
-      }
-    });
-
-    document.getElementById('btn-disconnect-supabase')?.addEventListener('click', () => {
-      if (window.supabaseManager) {
-        window.supabaseManager.saveCredentials('', '');
-        this.closeModal('modal-supabase-config');
-        this.showToast('Supabase desconectado.', 'info');
-      }
-    });
+    }
   }
 
   updateAdminUI() {
