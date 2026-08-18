@@ -12,7 +12,7 @@
   <!-- Bibliotecas para Exportação PDF, Imagem e Supabase Cloud -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/print.css" media="print">
@@ -84,7 +84,7 @@
 
       <!-- 3. Export & Admin Access -->
       <div class="topbar-right">
-        <!-- Export Menu -->
+        <!-- Export Menu (Apenas Admin) -->
         <div class="export-wrapper admin-only hidden">
           <button id="btn-export-menu" class="btn btn-export">
             <i data-lucide="download"></i>
@@ -431,7 +431,18 @@
       </form>
     </div>
   <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE CLOUD -->
-  
+  <div id="modal-supabase-config" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i data-lucide="cloud"></i>
+          </div>
+          <div>
+            <h3>Conectar Banco de Dados Supabase</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Sincronização na Nuvem em Tempo Real</p>
+          </div>
+        </div>
         <button type="button" class="modal-close" data-modal="modal-supabase-config">&times;</button>
       </div>
       <form id="form-supabase-config">
