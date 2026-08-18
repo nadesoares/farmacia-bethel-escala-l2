@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "name": "farmacia-bethel-escala-l2",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
