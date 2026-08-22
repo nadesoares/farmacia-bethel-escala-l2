@@ -855,16 +855,14 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
     }
     const existingSchedules = this.getAllSchedules();
-    if (!existingSchedules['2026-07']) {
-      try {
-        if (window.PharmacyScheduler) {
-          const scheduler = new window.PharmacyScheduler(this);
-          existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
-          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
-        }
-      } catch (e) {
-        console.warn('Auto-geração de Julho/2026:', e);
+    try {
+      if (window.PharmacyScheduler) {
+        const scheduler = new window.PharmacyScheduler(this);
+        existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
+        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
       }
+    } catch (e) {
+      console.warn('Auto-geração de Julho/2026:', e);
     }
     if (!existingSchedules['2026-08']) {
       existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
@@ -1389,14 +1387,11 @@ class PharmacyScheduler {
               slots[1].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[1]) slots[2].push({ employeeName: workingEmps[1].name, color: 'NORMAL' });
             } else {
+              slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
               if (mod4 === 0 || mod4 === 2) {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
-                slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
-              } else {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
                 slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+              } else {
+                slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
               }
             }
           } else if (dayOfWeek === 6) {

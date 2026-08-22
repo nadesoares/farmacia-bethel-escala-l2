@@ -93,16 +93,14 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
     }
     const existingSchedules = this.getAllSchedules();
-    if (!existingSchedules['2026-07']) {
-      try {
-        if (window.PharmacyScheduler) {
-          const scheduler = new window.PharmacyScheduler(this);
-          existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
-          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
-        }
-      } catch (e) {
-        console.warn('Auto-geração de Julho/2026:', e);
+    try {
+      if (window.PharmacyScheduler) {
+        const scheduler = new window.PharmacyScheduler(this);
+        existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
+        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
       }
+    } catch (e) {
+      console.warn('Auto-geração de Julho/2026:', e);
     }
     if (!existingSchedules['2026-08']) {
       existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
