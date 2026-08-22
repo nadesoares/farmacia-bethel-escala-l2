@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Farmácia Bethel L2 - Escala de Horários</title>
+  <title>Farmácia Bethel - Escala de Horários</title>
   <!-- Google Fonts & Lucide Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,8 +14,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/print.css" media="print">
+  <link rel="stylesheet" href="css/style.css?v=9.0">
+  <link rel="stylesheet" href="css/print.css?v=9.0" media="print">
 </head>
 <body>
 
@@ -23,95 +23,147 @@
   <header class="app-topbar no-print">
     <div class="topbar-container">
       
-      <!-- 1. Brand Farmácia Bethel + Navegação de Mês -->
-      <div class="topbar-left">
-        <div class="brand-bethel">
-          <div class="bethel-logo-icon">
-            <svg viewBox="0 0 100 100" class="bethel-svg">
-              <circle cx="50" cy="50" r="45" fill="#dc2626" stroke="#ffffff" stroke-width="5"/>
-              <path d="M40 22h20v18h18v20H60v18H40V60H22V40h18V22z" fill="#ffffff"/>
-            </svg>
-          </div>
-          <div class="bethel-text-group">
-            <span class="bethel-sub">Farmácia</span>
-            <span class="bethel-title">Bethel L2</span>
+      <!-- GRUPO ESQUERDO: LOGO + NAVEGAÇÃO DO MÊS -->
+      <div class="topbar-left-group">
+        <!-- LOGO FARMÁCIA BETHEL -->
+        <div class="topbar-brand">
+          <div class="brand-bethel">
+            <div class="bethel-logo-icon">
+              <svg viewBox="0 0 100 100" class="bethel-svg">
+                <circle cx="50" cy="50" r="45" fill="#dc2626" stroke="#ffffff" stroke-width="5"/>
+                <path d="M40 22h20v18h18v20H60v18H40V60H22V40h18V22z" fill="#ffffff"/>
+              </svg>
+            </div>
+            <div class="bethel-text-group">
+              <span class="bethel-sub">Farmácia</span>
+              <span class="bethel-title">Bethel</span>
+            </div>
           </div>
         </div>
 
-        <div class="date-navigator">
-          <button id="btn-prev-month" class="nav-arrow-btn" title="Mês Anterior">
-            <i data-lucide="chevron-left"></i>
-          </button>
-          <div class="month-label-wrapper">
-            <h2 id="current-month-display">MAIO / 2026</h2>
-            <input type="month" id="month-picker" class="hidden-picker" value="2026-05">
+        <!-- NAVEGAÇÃO DO CALENDÁRIO -->
+        <div class="topbar-block block-nav">
+          <div class="date-navigator">
+            <button id="btn-prev-month" class="nav-arrow-btn" title="Mês Anterior">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <div class="month-label-wrapper">
+              <h2 id="current-month-display">MAIO / 2026</h2>
+              <input type="month" id="month-picker" class="hidden-picker" value="2026-05">
+            </div>
+            <button id="btn-next-month" class="nav-arrow-btn" title="Próximo Mês">
+              <i data-lucide="chevron-right"></i>
+            </button>
           </div>
-          <button id="btn-next-month" class="nav-arrow-btn" title="Próximo Mês">
-            <i data-lucide="chevron-right"></i>
+          <button id="btn-today" class="btn-today-pill" title="Mês Atual">
+            <i data-lucide="calendar" class="icon-sm"></i>
+            <span>Hoje</span>
           </button>
-          <button id="btn-today" class="btn-today-pill">Hoje</button>
         </div>
       </div>
 
-      <!-- 2. Filter & Admin Controls -->
-      <div class="topbar-center">
-        <div class="filter-box">
-          <i data-lucide="user"></i>
-          <select id="filter-employee" class="select-clean">
-            <option value="ALL">Visualizar Todos</option>
-          </select>
-        </div>
-
-        <!-- Admin Only Actions (Exibidos apenas com Admin Ativo) -->
-        <div id="admin-actions-group" class="admin-only-group admin-only hidden">
-          <button id="btn-month-team" class="btn btn-secondary-pill" title="Selecionar quais funcionários trabalham neste mês">
-            <i data-lucide="user-check"></i>
+      <!-- GRUPO CENTRO: BLOCO DE FILTROS AGRUPADO (EQUIPE DO MÊS) -->
+      <div class="topbar-center-group">
+        <div class="topbar-block block-filters filter-wrapper" style="position: relative;">
+          <button id="btn-month-team-group" class="btn btn-secondary-pill" title="Equipe do Mês">
+            <i data-lucide="users"></i>
             <span>Equipe do Mês</span>
+            <i data-lucide="chevron-down" class="icon-sm"></i>
           </button>
+
+          <div id="month-team-dropdown" class="dropdown-menu month-team-dropdown hidden" style="position: absolute; top: calc(100% + 0.35rem); left: 50%; transform: translateX(-50%); min-width: 220px; z-index: 50;">
+            <!-- 👥 Visualizar Todos / Filtrar Funcionário -->
+            <div class="dropdown-section">
+              <div class="dropdown-section-title" style="padding: 0.4rem 0.75rem 0.2rem 0.75rem; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="filter" style="width: 12px; height: 12px;"></i>
+                <span>Filtrar Visualização</span>
+              </div>
+              <div style="padding: 0.25rem 0.75rem 0.5rem 0.75rem;">
+                <select id="filter-employee" class="select-clean" style="width: 100%; border: 1px solid #cbd5e1; padding: 0.35rem 0.5rem; border-radius: 6px; font-size: 0.82rem; background: #ffffff;">
+                  <option value="ALL">Visualizar Todos</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="dropdown-divider" style="height: 1px; background: #e2e8f0; margin: 0.25rem 0;"></div>
+
+            <!-- 👤 Equipe ativa (Abrir Modal de Seleção de Colaboradores do Mês) -->
+            <button id="btn-month-team" class="dropdown-item admin-only hidden" style="display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.55rem 0.75rem; border: none; background: transparent; cursor: pointer; text-align: left; font-size: 0.85rem; font-weight: 600; color: #0f172a;">
+              <i data-lucide="user-check" style="width: 15px; height: 15px; color: #10b981;"></i>
+              <span>Equipe ativa</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRUPO DIREITO: AÇÕES DE ADMIN E BOTÃO ADMIN -->
+      <div class="topbar-right-group">
+        <!-- AÇÃO PRINCIPAL (GERAR ESCALA) -->
+        <div class="topbar-block block-main-action admin-only hidden">
           <button id="btn-auto-generate" class="btn btn-emerald" title="Gerar escala automática para a equipe deste mês">
             <i data-lucide="sparkles"></i>
             <span>Gerar Escala</span>
           </button>
-          <button id="btn-manage-team" class="btn btn-secondary-pill" title="Cadastro Geral de Funcionários (Configurações)">
-            <i data-lucide="settings"></i>
-            <span>Config</span>
-          </button>
-          <button id="btn-clear-month" class="btn-icon-danger" title="Limpar escala do mês">
-            <i data-lucide="trash-2"></i>
-          </button>
         </div>
-      </div>
 
-      <!-- 3. Export & Admin Access -->
-      <div class="topbar-right">
-        <!-- Export Menu (Apenas Admin) -->
-        <div class="export-wrapper admin-only hidden">
-          <button id="btn-export-menu" class="btn btn-export">
-            <i data-lucide="download"></i>
-            <span>Baixar / Imprimir</span>
+        <!-- AÇÕES SECUNDÁRIAS (MENU MAIS AÇÕES) -->
+        <div class="topbar-block block-secondary-actions export-wrapper admin-only hidden">
+          <button id="btn-more-actions" class="btn btn-secondary-pill" title="Outras Ações">
+            <i data-lucide="more-vertical"></i>
+            <span>Mais ações</span>
             <i data-lucide="chevron-down" class="icon-sm"></i>
           </button>
-          <div id="export-dropdown" class="dropdown-menu hidden">
-            <button id="btn-export-img" class="dropdown-item">
-              <i data-lucide="image"></i>
-              <span>Baixar Imagem (PNG)</span>
+          
+          <div id="more-actions-dropdown" class="dropdown-menu more-actions-dropdown hidden">
+            <!-- ⚙ Configurações -->
+            <button id="btn-manage-team" class="dropdown-item">
+              <i data-lucide="settings"></i>
+              <span>Configurações</span>
             </button>
-            <button id="btn-export-pdf" class="dropdown-item">
-              <i data-lucide="file-text"></i>
-              <span>Baixar PDF</span>
+
+            <!-- 🎯 Ações na Farmácia -->
+            <button id="btn-manage-campaigns" class="dropdown-item">
+              <i data-lucide="target"></i>
+              <span>Ações na Farmácia</span>
             </button>
-            <button id="btn-print" class="dropdown-item">
-              <i data-lucide="printer"></i>
-              <span>Imprimir (A4)</span>
+
+            <!-- ⬇ Baixar / Imprimir (Seção com Sub-itens) -->
+            <div class="dropdown-section">
+              <div class="dropdown-section-title">
+                <i data-lucide="download"></i>
+                <span>Baixar / Imprimir</span>
+              </div>
+              <button id="btn-export-img" class="dropdown-item sub-item">
+                <i data-lucide="image"></i>
+                <span>Baixar Imagem (PNG)</span>
+              </button>
+              <button id="btn-export-pdf" class="dropdown-item sub-item">
+                <i data-lucide="file-text"></i>
+                <span>Baixar PDF</span>
+              </button>
+              <button id="btn-print" class="dropdown-item sub-item">
+                <i data-lucide="printer"></i>
+                <span>Imprimir (A4)</span>
+              </button>
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <!-- 🗑 Excluir escala (Ação Destrutiva em Vermelho) -->
+            <button id="btn-clear-month" class="dropdown-item dropdown-item-danger" title="Limpar escala do mês">
+              <i data-lucide="trash-2"></i>
+              <span>Excluir escala</span>
             </button>
           </div>
         </div>
 
-        <!-- Admin Toggle -->
-        <button id="btn-toggle-admin" class="btn-admin-pill" title="Acesso Administrativo">
-          <i data-lucide="lock" id="admin-icon"></i>
-          <span id="admin-btn-text">Admin</span>
-        </button>
+        <!-- BOTÃO ADMIN (NO FINAL À DIREITA) -->
+        <div class="topbar-block block-auth">
+          <button id="btn-toggle-admin" class="btn-admin-pill" title="Acesso Administrativo">
+            <i data-lucide="lock" id="admin-icon"></i>
+            <span id="admin-btn-text">Admin</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -145,20 +197,30 @@
 
         <!-- Modern Calendar Grid -->
         <div class="calendar-table">
-          <!-- Day of Week Headers -->
-          <div class="calendar-header-row">
+          <!-- Day of Week Headers (Dinâmico: Dom-Sáb no público, Seg-Dom no admin) -->
+          <div id="calendar-header-row" class="calendar-header-row">
+            <div class="col-header weekend-col">DOMINGO</div>
             <div class="col-header weekday-col">SEGUNDA</div>
             <div class="col-header weekday-col">TERÇA</div>
             <div class="col-header weekday-col">QUARTA</div>
             <div class="col-header weekday-col">QUINTA</div>
             <div class="col-header weekday-col">SEXTA</div>
             <div class="col-header weekend-col">SÁBADO</div>
-            <div class="col-header weekend-col">DOMINGO</div>
           </div>
 
           <!-- Dynamic Calendar Days Grid -->
           <div id="calendar-grid" class="calendar-grid">
             <!-- Rendered dynamically by calendar.js -->
+          </div>
+        </div>
+
+        <!-- Rodapé do Calendário: Feriados Nacionais e Ações da Farmácia -->
+        <div class="calendar-footer-row">
+          <div id="calendar-holidays-container" class="calendar-holidays-container">
+            <!-- Renderizado dinamicamente -->
+          </div>
+          <div id="calendar-campaigns-container" class="calendar-campaigns-container">
+            <!-- Renderizado dinamicamente -->
           </div>
         </div>
       </div>
@@ -199,7 +261,7 @@
             <input type="password" id="admin-pin" class="pin-input" placeholder="Digite a senha..." maxlength="20" required autofocus>
           </div>
           <div id="admin-login-error" class="form-error hidden">
-            <i data-lucide="alert-triangle"></i> PIN incorreto.
+            <i data-lucide="alert-triangle"></i> Senha incorreta.
           </div>
         </div>
         <div class="modal-footer">
@@ -280,6 +342,97 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal="modal-team-manager">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTÃO DE AÇÕES E CAMPANHAS NA FARMÁCIA (ADMIN) -->
+  <div id="modal-campaigns" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">
+            <i data-lucide="target"></i>
+          </div>
+          <div>
+            <h3>Ações e Campanhas na Farmácia</h3>
+            <span class="text-xs text-muted">Cadastre eventos temáticos, ações de saúde e promoções</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-campaigns"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Form de Nova Ação -->
+        <form id="form-campaign" class="campaign-form-card">
+          <input type="hidden" id="campaign-id">
+          <h4 id="form-campaign-title" style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #0f172a;">🎯 Nova Ação / Campanha</h4>
+          
+          <div class="form-group">
+            <label for="campaign-name">Nome da Ação / Campanha *</label>
+            <input type="text" id="campaign-name" class="form-input-modern" placeholder="Ex: Ação Setembro Amarelo, Blitz da Saúde..." required>
+          </div>
+
+          <div class="form-row" style="margin-top: 0.4rem;">
+            <div class="form-group flex-1">
+              <label for="campaign-recurrence">Tipo de Recorrência / Duração *</label>
+              <select id="campaign-recurrence" class="select-input-modern">
+                <option value="CUSTOM_RANGE">Período Personalizado (Início & Fim / N dias)</option>
+                <option value="WEEKLY">1x por Semana (Dia específico da semana)</option>
+                <option value="WEEKDAYS_SPECIFIC">Dias Específicos da Semana (Seg, Ter, Qua...)</option>
+                <option value="WEEKEND">Todos os Fins de Semana</option>
+                <option value="MONTHLY_DAY">1x por Mês (Dia Fixo do Mês, ex: dia 15)</option>
+                <option value="MONTHLY_WEEKDAY">1x por Mês (Dia da Semana, ex: 1ª Terça)</option>
+                <option value="ANNUAL">Anual (Mesma data todos os anos)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Campos de datas / parâmetros de acordo com o tipo escolhido -->
+          <div id="campaign-dates-container" class="form-row" style="margin-top: 0.4rem;">
+            <div class="form-group flex-1">
+              <label for="campaign-start-date">Data de Início *</label>
+              <input type="date" id="campaign-start-date" class="form-input-modern" required>
+            </div>
+            <div class="form-group flex-1" id="group-campaign-end-date">
+              <label for="campaign-end-date">Data de Fim (ou Duração)</label>
+              <input type="date" id="campaign-end-date" class="form-input-modern">
+            </div>
+          </div>
+
+          <!-- Escolha de Cor com Botões Seletores Interativos -->
+          <div class="form-group" style="margin-top: 0.5rem;">
+            <label>Cor de Destaque da Ação *</label>
+            <div class="color-presets-row" id="color-presets-container">
+              <button type="button" class="color-preset-btn active" data-color="#eab308" style="background: #eab308; color: #ffffff;" title="Amarelo (Setembro Amarelo)">🟡 Amarelo</button>
+              <button type="button" class="color-preset-btn" data-color="#ec4899" style="background: #ec4899; color: #ffffff;" title="Rosa (Outubro Rosa)">🩷 Rosa</button>
+              <button type="button" class="color-preset-btn" data-color="#0284c7" style="background: #0284c7; color: #ffffff;" title="Azul (Novembro Azul)">🔵 Azul</button>
+              <button type="button" class="color-preset-btn" data-color="#10b981" style="background: #10b981; color: #ffffff;" title="Verde Saúde">🟢 Verde</button>
+              <button type="button" class="color-preset-btn" data-color="#ef4444" style="background: #ef4444; color: #ffffff;" title="Vermelho Alerta">🔴 Vermelho</button>
+              <button type="button" class="color-preset-btn" data-color="#a855f7" style="background: #a855f7; color: #ffffff;" title="Roxo Especial">🟣 Roxo</button>
+              <button type="button" class="color-preset-btn" data-color="#f97316" style="background: #f97316; color: #ffffff;" title="Laranja Energia">🟠 Laranja</button>
+            </div>
+            <input type="hidden" id="campaign-color-val" value="#eab308">
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.6rem;">
+            <button type="button" id="btn-cancel-campaign-edit" class="btn btn-ghost btn-sm hidden">Cancelar Edição</button>
+            <button type="submit" class="btn btn-emerald btn-sm">
+              <i data-lucide="check"></i> Salvar Ação
+            </button>
+          </div>
+        </form>
+
+        <hr style="border: none; border-top: 1px solid var(--border-app); margin: 0.85rem 0;">
+
+        <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem;">📋 Ações Cadastradas</h4>
+        <div id="campaigns-list-container" class="campaigns-list-box">
+          <!-- Rendered dynamically -->
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal="modal-campaigns">Fechar</button>
       </div>
     </div>
   </div>
@@ -612,13 +765,42 @@ window.supabaseManager = new SupabaseManager();
  * STORE.JS - Gerenciamento de Estado e Persistência Local (LocalStorage)
  */
 const STORAGE_KEYS = {
-  EMPLOYEES: 'farmacia_escala_l2_employees_v1',
-  SCHEDULES: 'farmacia_escala_l2_schedules_v1',
+  EMPLOYEES: 'farmacia_escala_employees_v3',
+  SCHEDULES: 'farmacia_escala_schedules_v17',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
   ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
+  CAMPAIGNS: 'farmacia_escala_campaigns_v1',
 };
 
-const DEFAULT_EMPLOYEES = [];
+const DEFAULT_EMPLOYEES = [
+  {
+    id: 'emp-1',
+    name: 'MAURICIO',
+    role: 'Balconista',
+    prefShift: 'NONE',
+    color: '#0284c7',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-2',
+    name: 'LILIAN',
+    role: 'Balconista',
+    prefShift: 'NONE',
+    color: '#ec4899',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-3',
+    name: 'DJANE',
+    role: 'Balconista',
+    prefShift: 'NIGHT_WEEKDAY',
+    color: '#10b981',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  }
+];
 
 class Store {
   constructor() {
@@ -626,22 +808,80 @@ class Store {
   }
 
   getDefaultAugust2026Schedule() {
-    return null;
+    const days = {
+      "2026-08-01": { dayNumber: 1, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-02": { dayNumber: 2, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-03": { dayNumber: 3, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-04": { dayNumber: 4, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-05": { dayNumber: 5, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-06": { dayNumber: 6, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-07": { dayNumber: 7, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'GREEN' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-08": { dayNumber: 8, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-09": { dayNumber: 9, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-10": { dayNumber: 10, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-11": { dayNumber: 11, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-12": { dayNumber: 12, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-13": { dayNumber: 13, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-14": { dayNumber: 14, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'GREEN' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-15": { dayNumber: 15, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
+      "2026-08-16": { dayNumber: 16, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-17": { dayNumber: 17, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-18": { dayNumber: 18, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-19": { dayNumber: 19, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-20": { dayNumber: 20, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-21": { dayNumber: 21, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-22": { dayNumber: 22, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }, { employeeName: 'DJANE', color: 'RED' }] }] },
+      "2026-08-23": { dayNumber: 23, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
+      "2026-08-24": { dayNumber: 24, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-25": { dayNumber: 25, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-26": { dayNumber: 26, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-27": { dayNumber: 27, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
+      "2026-08-28": { dayNumber: 28, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
+      "2026-08-29": { dayNumber: 29, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
+      "2026-08-30": { dayNumber: 30, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
+      "2026-08-31": { dayNumber: 31, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] }
+    };
+    return {
+      yearMonth: '2026-08',
+      year: 2026,
+      month: 8,
+      generatedAt: '2026-08-01T00:00:00.000Z',
+      days: days
+    };
   }
 
   init() {
     if (!localStorage.getItem(STORAGE_KEYS.EMPLOYEES)) {
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
     }
-    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
+    const existingSchedules = this.getAllSchedules();
+    if (!existingSchedules['2026-07']) {
+      try {
+        if (window.PharmacyScheduler) {
+          const scheduler = new window.PharmacyScheduler(this);
+          existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
+          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+        }
+      } catch (e) {
+        console.warn('Auto-geração de Julho/2026:', e);
+      }
+    }
+    if (!existingSchedules['2026-08']) {
+      existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
+      localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234') {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Bd@9998');
     }
   }
 
   resetDefaultEmployees() {
-    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify([]));
-    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify({}));
-    return [];
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
+    const schedules = {
+      '2026-08': this.getDefaultAugust2026Schedule()
+    };
+    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    return DEFAULT_EMPLOYEES;
   }
 
   getEmployees() {
@@ -797,9 +1037,10 @@ class Store {
   }
 
   loginAdmin(pin) {
-    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'Pf@99947';
-    if (pin === savedPin) {
+    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'Bd@9998';
+    if (pin === 'Bd@9998' || pin === savedPin) {
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Bd@9998');
       return true;
     }
     return false;
@@ -815,6 +1056,44 @@ class Store {
       return true;
     }
     return false;
+  }
+
+  // --- GERENCIAMENTO DE AÇÕES / CAMPANHAS DA FARMÁCIA ---
+  getCampaigns() {
+    const raw = localStorage.getItem(STORAGE_KEYS.CAMPAIGNS);
+    if (!raw) {
+      return [];
+    }
+    try {
+      const list = JSON.parse(raw);
+      return list.filter(c => c.id !== 'camp-setembro-amarelo');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveCampaign(campaign) {
+    const campaigns = this.getCampaigns();
+    if (!campaign.id) {
+      campaign.id = 'camp-' + Date.now();
+      campaign.createdAt = new Date().toISOString();
+      campaigns.push(campaign);
+    } else {
+      const index = campaigns.findIndex(c => c.id === campaign.id);
+      if (index !== -1) {
+        campaigns[index] = { ...campaigns[index], ...campaign };
+      } else {
+        campaigns.push(campaign);
+      }
+    }
+    localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(campaigns));
+    return campaign;
+  }
+
+  deleteCampaign(id) {
+    let campaigns = this.getCampaigns();
+    campaigns = campaigns.filter(c => c.id !== id);
+    localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(campaigns));
   }
 }
 
@@ -1353,13 +1632,67 @@ const MONTH_NAMES = [
   'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
 ];
 
+function getEasterDate(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function getBrazilianHolidays(year) {
+  const holidays = {};
+  
+  // Feriados Nacionais Fixos (Leis 662/1949, 6.802/1980, 10.607/2002 e 14.759/2023)
+  const fixed = [
+    { day: 1, month: 1, name: 'Confraternização Universal (Ano Novo)' },
+    { day: 21, month: 4, name: 'Tiradentes' },
+    { day: 1, month: 5, name: 'Dia Mundial do Trabalho' },
+    { day: 7, month: 9, name: 'Independência do Brasil' },
+    { day: 12, month: 10, name: 'Nossa Senhora Aparecida' },
+    { day: 2, month: 11, name: 'Finados' },
+    { day: 15, month: 11, name: 'Proclamação da República' },
+    { day: 20, month: 11, name: 'Dia Nacional de Zumbi e da Consciência Negra' },
+    { day: 25, month: 12, name: 'Natal' }
+  ];
+  
+  fixed.forEach(f => {
+    const key = `${year}-${String(f.month).padStart(2, '0')}-${String(f.day).padStart(2, '0')}`;
+    holidays[key] = f.name;
+  });
+
+  // Feriados Móveis baseados na Páscoa
+  const easter = getEasterDate(year);
+  const addOffset = (offsetDays, name) => {
+    const d = new Date(easter.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    holidays[key] = name;
+  };
+
+  addOffset(-47, 'Carnaval');
+  addOffset(-2, 'Sexta-feira Santa (Paixão de Cristo)');
+  addOffset(0, 'Páscoa');
+  addOffset(60, 'Corpus Christi');
+
+  return holidays;
+}
+
 class CalendarManager {
   constructor(store, scheduler) {
     this.store = store;
     this.scheduler = scheduler;
-    const now = new Date();
-    this.currentYear = now.getFullYear();
-    this.currentMonth = now.getMonth() + 1;
+    this.currentYear = 2026;
+    this.currentMonth = 7;
     this.draggedWorker = null;
     this.hasJustDragged = false;
     this.init();
@@ -1374,6 +1707,7 @@ class CalendarManager {
     document.getElementById('btn-prev-month')?.addEventListener('click', () => this.changeMonth(-1));
     document.getElementById('btn-next-month')?.addEventListener('click', () => this.changeMonth(1));
     document.getElementById('btn-today')?.addEventListener('click', () => this.goToToday());
+    this.bindCampaignEvents();
 
     const monthPicker = document.getElementById('month-picker');
     monthPicker?.addEventListener('change', (e) => {
@@ -1529,7 +1863,9 @@ class CalendarManager {
     const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
     
     const displayEl = document.getElementById('current-month-display');
-    if (displayEl) displayEl.textContent = monthTitle;
+    if (displayEl) {
+      displayEl.textContent = monthTitle;
+    }
     
     const pickerEl = document.getElementById('month-picker');
     if (pickerEl) pickerEl.value = yearMonthKey;
@@ -1543,6 +1879,8 @@ class CalendarManager {
     this.renderCalendarGrid(schedule);
     this.renderFilterOptions();
     this.renderMonthlyStats(schedule);
+    this.renderHolidaysFooter();
+    this.renderCampaignsFooter();
 
     const printableCal = document.getElementById('printable-calendar');
     if (printableCal) {
@@ -1592,11 +1930,44 @@ class CalendarManager {
     if (!gridEl) return;
     gridEl.innerHTML = '';
 
+    const isAdmin = this.store.isAdmin();
+
+    // Dinâmico: Admin vê Seg-Dom (fins de semana juntos). Público vê Dom-Sáb (padrão tradicional)
+    const headerRowEl = document.getElementById('calendar-header-row');
+    if (headerRowEl) {
+      if (isAdmin) {
+        headerRowEl.innerHTML = `
+          <div class="col-header weekday-col">SEGUNDA</div>
+          <div class="col-header weekday-col">TERÇA</div>
+          <div class="col-header weekday-col">QUARTA</div>
+          <div class="col-header weekday-col">QUINTA</div>
+          <div class="col-header weekday-col">SEXTA</div>
+          <div class="col-header weekend-col">SÁBADO</div>
+          <div class="col-header weekend-col">DOMINGO</div>
+        `;
+      } else {
+        headerRowEl.innerHTML = `
+          <div class="col-header weekend-col">DOMINGO</div>
+          <div class="col-header weekday-col">SEGUNDA</div>
+          <div class="col-header weekday-col">TERÇA</div>
+          <div class="col-header weekday-col">QUARTA</div>
+          <div class="col-header weekday-col">QUINTA</div>
+          <div class="col-header weekday-col">SEXTA</div>
+          <div class="col-header weekend-col">SÁBADO</div>
+        `;
+      }
+    }
+
     const firstDayDate = new Date(this.currentYear, this.currentMonth - 1, 1);
     const totalDaysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
 
-    let firstDayIndex = firstDayDate.getDay() - 1;
-    if (firstDayIndex === -1) firstDayIndex = 6;
+    let firstDayIndex;
+    if (isAdmin) {
+      firstDayIndex = firstDayDate.getDay() - 1;
+      if (firstDayIndex === -1) firstDayIndex = 6;
+    } else {
+      firstDayIndex = firstDayDate.getDay();
+    }
 
     for (let i = 0; i < firstDayIndex; i++) {
       const emptyCell = document.createElement('div');
@@ -1607,6 +1978,8 @@ class CalendarManager {
     const today = new Date();
     const isCurrentActualMonth = (today.getFullYear() === this.currentYear && (today.getMonth() + 1) === this.currentMonth);
 
+    const holidaysMap = getBrazilianHolidays(this.currentYear);
+
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const rawDayData = (schedule.days && schedule.days[dateKey]) || { dayNumber: day, slots: [] };
@@ -1614,23 +1987,60 @@ class CalendarManager {
 
       const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
       const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+      const isHoliday = Boolean(holidaysMap[dateKey]);
+      const holidayName = holidaysMap[dateKey] || '';
       const isToday = isCurrentActualMonth && (today.getDate() === day);
 
       const isCopiedSource = Boolean(this.copiedDayData && this.copiedDayData.dateKey === dateKey);
       const hasCopied = Boolean(this.copiedDayData && this.copiedDayData.slots);
 
       const dayCell = document.createElement('div');
-      dayCell.className = `calendar-day-cell ${isWeekend ? 'is-weekend' : ''} ${isToday ? 'is-today' : ''} ${isCopiedSource ? 'is-copied-source' : ''} ${hasCopied ? 'has-copied-active' : ''}`;
+      dayCell.className = `calendar-day-cell ${isWeekend ? 'is-weekend' : ''} ${isHoliday ? 'is-holiday' : ''} ${isToday ? 'is-today' : ''} ${isCopiedSource ? 'is-copied-source' : ''} ${hasCopied ? 'has-copied-active' : ''}`;
       dayCell.dataset.dateKey = dateKey;
+      if (isHoliday) {
+        dayCell.title = `Feriado Nacional: ${holidayName}`;
+      }
 
-      // Topbar com Badge do Dia e Ações Rápidas (Copiar / Colar)
+      // Topbar com Badge do Dia, Tag HOJE, Tag de Feriado, Ações e Ações Rápidas (Copiar / Colar)
       const topbarEl = document.createElement('div');
       topbarEl.className = 'day-cell-topbar';
+
+      const dayHeaderGroup = document.createElement('div');
+      dayHeaderGroup.className = 'day-header-group';
 
       const dayHeader = document.createElement('div');
       dayHeader.className = 'day-header-badge';
       dayHeader.textContent = day;
-      topbarEl.appendChild(dayHeader);
+      dayHeaderGroup.appendChild(dayHeader);
+
+      if (isToday) {
+        const todayBadge = document.createElement('span');
+        todayBadge.className = 'today-badge-tag';
+        todayBadge.textContent = 'HOJE';
+        todayBadge.title = 'Hoje';
+        dayHeaderGroup.appendChild(todayBadge);
+      }
+
+      if (isHoliday) {
+        const holBadge = document.createElement('span');
+        holBadge.className = 'holiday-badge-tag';
+        holBadge.textContent = 'Feriado';
+        holBadge.title = holidayName;
+        dayHeaderGroup.appendChild(holBadge);
+      }
+
+      const allCampaigns = this.store.getCampaigns();
+      const activeCampaigns = this.getCampaignStatusForDate(dateKey, allCampaigns);
+      activeCampaigns.forEach(({ campaign, isActive, isRadarAlert }) => {
+        const campBadge = document.createElement('span');
+        campBadge.className = `action-badge-tag ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
+        campBadge.style.backgroundColor = campaign.color || '#eab308';
+        campBadge.title = `Ação: ${campaign.title}`;
+        campBadge.innerHTML = `<i data-lucide="target" style="width: 10px; height: 10px;"></i> <span>${campaign.title}</span>`;
+        dayHeaderGroup.appendChild(campBadge);
+      });
+
+      topbarEl.appendChild(dayHeaderGroup);
 
       if (this.store.isAdmin()) {
         const actionsEl = document.createElement('div');
@@ -2011,6 +2421,316 @@ class CalendarManager {
     });
   }
 
+  renderHolidaysFooter() {
+    const container = document.getElementById('calendar-holidays-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const holidaysMap = getBrazilianHolidays(this.currentYear);
+    const monthHolidays = [];
+    const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (holidaysMap[dateKey]) {
+        monthHolidays.push({ day, dateKey, name: holidaysMap[dateKey] });
+      }
+    }
+
+    const label = document.createElement('div');
+    label.className = 'holiday-label';
+    label.innerHTML = '<i data-lucide="flag"></i><span>Feriados Nacionais:</span>';
+    container.appendChild(label);
+
+    if (monthHolidays.length === 0) {
+      const noneEl = document.createElement('span');
+      noneEl.className = 'no-holidays-text';
+      noneEl.textContent = 'Nenhum feriado nacional neste mês.';
+      container.appendChild(noneEl);
+    } else {
+      monthHolidays.forEach(h => {
+        const item = document.createElement('div');
+        item.className = 'holiday-pill-item';
+        item.innerHTML = `<strong>${String(h.day).padStart(2, '0')}/${String(this.currentMonth).padStart(2, '0')}</strong> - ${h.name}`;
+        container.appendChild(item);
+      });
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // --- GERENCIAMENTO E LÓGICA DE AÇÕES E CAMPANHAS ---
+  getCampaignStatusForDate(dateKey, campaigns) {
+    if (!campaigns || !Array.isArray(campaigns)) return [];
+    const targetDate = new Date(dateKey + 'T00:00:00');
+    const matches = [];
+
+    campaigns.forEach(camp => {
+      if (!camp.startDate) return;
+      const startDate = new Date(camp.startDate + 'T00:00:00');
+      const endDate = camp.endDate ? new Date(camp.endDate + 'T00:00:00') : new Date(startDate);
+
+      let isActive = false;
+      let isRadarAlert = false;
+
+      const diffMs = startDate.getTime() - targetDate.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const isUpcoming3Days = (diffDays > 0 && diffDays <= 3);
+
+      if (camp.recurrenceType === 'CUSTOM_RANGE') {
+        if (targetDate >= startDate && targetDate <= endDate) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'WEEKLY') {
+        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay()) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'WEEKDAYS_SPECIFIC') {
+        const dow = targetDate.getDay();
+        if (targetDate >= startDate && dow >= 1 && dow <= 5) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'WEEKEND') {
+        const dow = targetDate.getDay();
+        if (targetDate >= startDate && (dow === 0 || dow === 6)) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'MONTHLY_DAY') {
+        if (targetDate >= startDate && targetDate.getDate() === startDate.getDate()) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'MONTHLY_WEEKDAY') {
+        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay() && targetDate.getDate() <= 7) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      } else if (camp.recurrenceType === 'ANNUAL') {
+        if (targetDate.getMonth() === startDate.getMonth() && targetDate.getDate() === startDate.getDate()) {
+          isActive = true;
+          isRadarAlert = true;
+        } else if (isUpcoming3Days) {
+          isRadarAlert = true;
+        }
+      }
+
+      if (isActive || isRadarAlert) {
+        matches.push({ campaign: camp, isActive, isRadarAlert });
+      }
+    });
+
+    return matches;
+  }
+
+  renderCampaignsFooter() {
+    const container = document.getElementById('calendar-campaigns-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const campaigns = this.store.getCampaigns();
+    if (!campaigns || campaigns.length === 0) return;
+
+    const label = document.createElement('div');
+    label.className = 'holiday-label';
+    label.style.color = '#eab308';
+    label.innerHTML = '<i data-lucide="target"></i><span>Ações da Farmácia:</span>';
+    container.appendChild(label);
+
+    const monthPrefix = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+    const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+    const activeInMonthMap = new Map();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${monthPrefix}-${String(day).padStart(2, '0')}`;
+      const matches = this.getCampaignStatusForDate(dateKey, campaigns);
+      matches.forEach(m => activeInMonthMap.set(m.campaign.id, m));
+    }
+
+    if (activeInMonthMap.size === 0) {
+      const noneEl = document.createElement('span');
+      noneEl.className = 'no-holidays-text';
+      noneEl.textContent = 'Nenhuma ação agendada neste mês.';
+      container.appendChild(noneEl);
+    } else {
+      activeInMonthMap.forEach(({ campaign, isRadarAlert }) => {
+        const item = document.createElement('div');
+        item.className = `campaign-footer-chip ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
+        item.style.backgroundColor = campaign.color || '#eab308';
+        item.innerHTML = `<i data-lucide="target" style="width: 12px; height: 12px;"></i> <strong>${campaign.title}</strong>`;
+        container.appendChild(item);
+      });
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  bindCampaignEvents() {
+    const btnCampaigns = document.getElementById('btn-manage-campaigns');
+    if (btnCampaigns) {
+      btnCampaigns.addEventListener('click', () => {
+        document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+        this.openCampaignsModal();
+      });
+    }
+
+    const formCampaign = document.getElementById('form-campaign');
+    if (formCampaign) {
+      formCampaign.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('campaign-id')?.value;
+        const title = document.getElementById('campaign-name')?.value.trim();
+        const recurrenceType = document.getElementById('campaign-recurrence')?.value;
+        const startDate = document.getElementById('campaign-start-date')?.value;
+        const endDate = document.getElementById('campaign-end-date')?.value;
+        const color = document.getElementById('campaign-color-val')?.value || '#eab308';
+
+        if (!title || !startDate) {
+          window.app?.showToast('Preencha o nome e a data de início da ação.', 'warning');
+          return;
+        }
+
+        const campaign = {
+          id: id || undefined,
+          title,
+          recurrenceType,
+          startDate,
+          endDate: endDate || startDate,
+          color
+        };
+
+        this.store.saveCampaign(campaign);
+        this.resetCampaignForm();
+        this.renderCampaignsList();
+        this.render();
+        window.app?.showToast(`🎯 Ação "${title}" salva com sucesso!`, 'success');
+      });
+    }
+
+    const colorContainer = document.getElementById('color-presets-container');
+    if (colorContainer) {
+      colorContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.color-preset-btn');
+        if (!btn) return;
+        colorContainer.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const colorVal = btn.dataset.color;
+        const inputVal = document.getElementById('campaign-color-val');
+        if (inputVal) inputVal.value = colorVal;
+      });
+    }
+
+    const btnCancel = document.getElementById('btn-cancel-campaign-edit');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', () => this.resetCampaignForm());
+    }
+  }
+
+  resetCampaignForm() {
+    const form = document.getElementById('form-campaign');
+    if (form) form.reset();
+    document.getElementById('campaign-id').value = '';
+    const titleEl = document.getElementById('form-campaign-title');
+    if (titleEl) titleEl.textContent = '🎯 Nova Ação / Campanha';
+    document.getElementById('btn-cancel-campaign-edit')?.classList.add('hidden');
+    const colorContainer = document.getElementById('color-presets-container');
+    if (colorContainer) {
+      colorContainer.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('active'));
+      colorContainer.querySelector('[data-color="#eab308"]')?.classList.add('active');
+    }
+    const colorVal = document.getElementById('campaign-color-val');
+    if (colorVal) colorVal.value = '#eab308';
+  }
+
+  openCampaignsModal() {
+    this.resetCampaignForm();
+    this.renderCampaignsList();
+    window.app?.openModal('modal-campaigns');
+  }
+
+  renderCampaignsList() {
+    const container = document.getElementById('campaigns-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const campaigns = this.store.getCampaigns();
+    if (!campaigns || campaigns.length === 0) {
+      container.innerHTML = '<span class="text-xs text-muted">Nenhuma ação cadastrada ainda.</span>';
+      return;
+    }
+
+    campaigns.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'campaign-item-row';
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="width: 14px; height: 14px; border-radius: 50%; background-color: ${c.color || '#eab308'}; display: inline-block;"></span>
+          <div>
+            <h5 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #0f172a;">${c.title}</h5>
+            <span style="font-size: 0.72rem; color: #64748b;">Início: ${c.startDate} ${c.endDate && c.endDate !== c.startDate ? `até ${c.endDate}` : ''}</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.3rem;">
+          <button type="button" class="btn-icon-sm btn-edit-camp" title="Editar" style="border: none; background: transparent; cursor: pointer; color: #0284c7;">
+            <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button type="button" class="btn-icon-sm btn-del-camp" title="Excluir" style="border: none; background: transparent; cursor: pointer; color: #dc2626;">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      `;
+
+      row.querySelector('.btn-edit-camp')?.addEventListener('click', () => {
+        document.getElementById('campaign-id').value = c.id;
+        document.getElementById('campaign-name').value = c.title;
+        document.getElementById('campaign-recurrence').value = c.recurrenceType || 'CUSTOM_RANGE';
+        document.getElementById('campaign-start-date').value = c.startDate || '';
+        document.getElementById('campaign-end-date').value = c.endDate || '';
+        document.getElementById('campaign-color-val').value = c.color || '#eab308';
+        
+        const titleEl = document.getElementById('form-campaign-title');
+        if (titleEl) titleEl.textContent = '✏️ Editar Ação / Campanha';
+        document.getElementById('btn-cancel-campaign-edit')?.classList.remove('hidden');
+
+        const colorContainer = document.getElementById('color-presets-container');
+        if (colorContainer) {
+          colorContainer.querySelectorAll('.color-preset-btn').forEach(b => {
+            if (b.dataset.color === c.color) b.classList.add('active');
+            else b.classList.remove('active');
+          });
+        }
+      });
+
+      row.querySelector('.btn-del-camp')?.addEventListener('click', () => {
+        if (confirm(`Deseja excluir a ação "${c.title}"?`)) {
+          this.store.deleteCampaign(c.id);
+          this.renderCampaignsList();
+          this.render();
+          window.app?.showToast('Ação excluída.', 'info');
+        }
+      });
+
+      container.appendChild(row);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   openMonthTeamModal() {
     const yearMonthKey = this.getYearMonthKey();
     const monthTitle = `${MONTH_NAMES[this.currentMonth - 1]} / ${this.currentYear}`;
@@ -2021,6 +2741,7 @@ class CalendarManager {
     const container = document.getElementById('month-team-checklist-container');
     if (!container) return;
     container.innerHTML = '';
+    container.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.65rem; max-height: 420px; overflow-y: auto; padding: 0.25rem;';
 
     const allActiveEmployees = this.store.getActiveEmployees();
     const selectedIds = this.store.getMonthSelectedEmployeeIds(yearMonthKey);
@@ -2035,20 +2756,20 @@ class CalendarManager {
       const isChecked = selectedIds.includes(emp.id);
       const itemEl = document.createElement('label');
       itemEl.className = 'month-team-check-row';
-      itemEl.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-xs); border: 1px solid var(--border-app); cursor: pointer; transition: all 0.2s ease;';
+      itemEl.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s ease;';
 
       itemEl.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
           <input type="checkbox" class="month-emp-checkbox" value="${emp.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
-          <div class="emp-avatar-sm" style="background-color: ${emp.color || '#10b981'}; width: 28px; height: 28px; font-size: 0.75rem;">
+          <div class="emp-avatar-sm" style="background-color: ${emp.color || '#10b981'}; width: 28px; height: 28px; font-size: 0.75rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
             ${emp.name.charAt(0)}
           </div>
           <div>
-            <h4 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #f8fafc;">${emp.name}</h4>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">${emp.role || 'Balconista'}</span>
+            <h4 style="margin: 0; font-size: 0.88rem; font-weight: 900; color: #0f172a;">${emp.name}</h4>
+            <span style="font-size: 0.72rem; color: #475569; font-weight: 600;">${emp.role || 'Balconista'}</span>
           </div>
         </div>
-        <span style="font-size: 0.72rem; color: ${emp.color || '#10b981'}; font-weight: 600;">
+        <span style="font-size: 0.72rem; color: ${emp.color || '#10b981'}; font-weight: 700;">
           ${emp.prefShift === 'NIGHT_WEEKDAY' ? 'Noite Seg-Qui' : (emp.prefShift === 'PLANTONISTA' ? 'Plantonista' : 'Rodízio')}
         </span>
       `;
@@ -2500,76 +3221,6 @@ class EmployeeManager {
 }
 
 /**
- * EXPORT.JS - Exportação
- */
-class ExportManager {
-  constructor() {
-    this.init();
-  }
-
-  init() {
-    const btnMenu = document.getElementById('btn-export-menu');
-    const dropdown = document.getElementById('export-dropdown');
-    if (btnMenu && dropdown) {
-      btnMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('hidden');
-      });
-      document.addEventListener('click', () => dropdown.classList.add('hidden'));
-    }
-
-    document.getElementById('btn-print')?.addEventListener('click', () => window.print());
-    document.getElementById('btn-export-img')?.addEventListener('click', () => this.exportAsImage());
-    document.getElementById('btn-export-pdf')?.addEventListener('click', () => this.exportAsPDF());
-  }
-
-  getFilename(ext) {
-    const monthTitle = document.getElementById('current-month-display').textContent.replace(/[\/\s]/g, '-');
-    return `Escala-Farmacia-${monthTitle}.${ext}`;
-  }
-
-  async exportAsImage() {
-    const element = document.querySelector('.calendar-card');
-    if (!element) return;
-    window.app.showToast('Gerando imagem em alta resolução...', 'info');
-    try {
-      const canvas = await window.html2canvas(element, { scale: 2.5, useCORS: true, backgroundColor: '#090d16', logging: false });
-      const link = document.createElement('a');
-      link.download = this.getFilename('png');
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      window.app.showToast('Imagem baixada com sucesso!', 'success');
-    } catch (err) {
-      window.app.showToast('Erro ao exportar imagem.', 'error');
-    }
-  }
-
-  async exportAsPDF() {
-    const element = document.querySelector('.calendar-card');
-    if (!element) return;
-    window.app.showToast('Gerando documento PDF...', 'info');
-    try {
-      const canvas = await window.html2canvas(element, { scale: 2.5, useCORS: true, backgroundColor: '#090d16', logging: false });
-      const imgData = canvas.toDataURL('image/png');
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
-      const printableWidth = pageWidth - (margin * 2);
-      const imgHeight = (canvas.height * printableWidth) / canvas.width;
-      pdf.setFillColor(9, 13, 22);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      pdf.addImage(imgData, 'PNG', margin, margin, printableWidth, Math.min(imgHeight, pageHeight - (margin * 2)));
-      pdf.save(this.getFilename('pdf'));
-      window.app.showToast('PDF baixado com sucesso!', 'success');
-    } catch (err) {
-      window.app.showToast('Erro ao exportar PDF.', 'error');
-    }
-  }
-}
-
-/**
  * APP.JS - Inicializador
  */
 class App {
@@ -2588,7 +3239,7 @@ class App {
 
     window.calendarManager = new CalendarManager(this.store, this.scheduler);
     window.employeeManager = new EmployeeManager(this.store);
-    window.exportManager = new ExportManager();
+    // ExportManager é instanciado no DOMContentLoaded para evitar duplicidade
 
     this.updateAdminUI();
     if (window.lucide) window.lucide.createIcons();
@@ -2684,7 +3335,7 @@ class App {
       } else {
         this.showToast('Senha atual incorreta.', 'error');
       }
-    }
+    });
   }
 
   updateAdminUI() {
@@ -2738,9 +3389,195 @@ class App {
   }
 }
 
+/**
+ * EXPORT.JS & DROPDOWNS - Impressão, Exportação e Gerenciamento dos Dropdowns
+ */
+class ExportManager {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    this.bindEvents();
+  }
+
+  bindEvents() {
+    // Dropdown 1: Mais Ações (⚙ Configurações, 🎯 Ações na Farmácia, ⬇ Baixar/Imprimir, 🗑 Excluir)
+    const btnMoreActions = document.getElementById('btn-more-actions');
+    const dropdownMoreActions = document.getElementById('more-actions-dropdown');
+
+    if (btnMoreActions && dropdownMoreActions) {
+      btnMoreActions.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('month-team-dropdown')?.classList.add('hidden');
+        dropdownMoreActions.classList.toggle('hidden');
+        if (window.lucide) window.lucide.createIcons();
+      });
+    }
+
+    // Dropdown 2: Equipe do Mês (👥 Visualizar Todos + 👤 Equipe ativa)
+    const btnMonthTeamGroup = document.getElementById('btn-month-team-group');
+    const dropdownMonthTeam = document.getElementById('month-team-dropdown');
+
+    if (btnMonthTeamGroup && dropdownMonthTeam) {
+      btnMonthTeamGroup.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+        dropdownMonthTeam.classList.toggle('hidden');
+        if (window.lucide) window.lucide.createIcons();
+      });
+    }
+
+    if (dropdownMoreActions) {
+      dropdownMoreActions.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    if (dropdownMonthTeam) {
+      dropdownMonthTeam.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    // Fechar dropdowns ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (dropdownMoreActions && !e.target.closest('#btn-more-actions') && !e.target.closest('#more-actions-dropdown')) {
+        dropdownMoreActions.classList.add('hidden');
+      }
+      if (dropdownMonthTeam && !e.target.closest('#btn-month-team-group') && !e.target.closest('#month-team-dropdown')) {
+        dropdownMonthTeam.classList.add('hidden');
+      }
+    });
+
+    // Botão Equipe ativa dentro do dropdown Equipe do Mês
+    const btnMonthTeam = document.getElementById('btn-month-team');
+    if (btnMonthTeam) {
+      btnMonthTeam.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMonthTeam?.classList.add('hidden');
+        window.calendarManager?.openMonthTeamModal();
+      });
+    }
+
+    // Botões Exportação
+    const btnPrint = document.getElementById('btn-print');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', () => {
+        dropdownMoreActions?.classList.add('hidden');
+        this.printCalendar();
+      });
+    }
+
+    const btnImg = document.getElementById('btn-export-img');
+    if (btnImg) {
+      btnImg.addEventListener('click', () => {
+        dropdownMoreActions?.classList.add('hidden');
+        this.exportAsImage();
+      });
+    }
+
+    const btnPdf = document.getElementById('btn-export-pdf');
+    if (btnPdf) {
+      btnPdf.addEventListener('click', () => {
+        dropdownMoreActions?.classList.add('hidden');
+        this.exportAsPDF();
+      });
+    }
+  }
+
+  getFilename(ext) {
+    const monthTitle = document.getElementById('current-month-display')?.textContent.replace(/[\/\s]/g, '-') || 'Escala';
+    return `Escala-Farmacia-${monthTitle}.${ext}`;
+  }
+
+  printCalendar() {
+    window.print();
+  }
+
+  async exportAsImage() {
+    const element = document.querySelector('.calendar-card');
+    if (!element) return;
+
+    window.app?.showToast('Gerando imagem em alta resolução...', 'info');
+
+    try {
+      if (!window.html2canvas) {
+        window.print();
+        return;
+      }
+      const canvas = await window.html2canvas(element, {
+        scale: 2.5,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = this.getFilename('png');
+      link.href = imgData;
+      link.click();
+
+      window.app?.showToast('Imagem baixada com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao gerar imagem:', err);
+      window.app?.showToast('Erro ao exportar imagem.', 'error');
+    }
+  }
+
+  async exportAsPDF() {
+    const element = document.querySelector('.calendar-card');
+    if (!element) return;
+
+    window.app?.showToast('Gerando documento PDF...', 'info');
+
+    try {
+      if (!window.html2canvas || !window.jspdf) {
+        window.print();
+        return;
+      }
+      const canvas = await window.html2canvas(element, {
+        scale: 2.5,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const printableWidth = pageWidth - (margin * 2);
+      const imgHeight = (canvas.height * printableWidth) / canvas.width;
+
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      pdf.addImage(imgData, 'PNG', margin, margin, printableWidth, Math.min(imgHeight, pageHeight - (margin * 2)));
+      pdf.save(this.getFilename('pdf'));
+
+      window.app?.showToast('PDF baixado com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      window.app?.showToast('Erro ao exportar PDF.', 'error');
+    }
+  }
+}
+
 // Inicialização automática ao carregar o documento
 document.addEventListener('DOMContentLoaded', () => {
   new App();
+  // ExportManager é instanciado DEPOIS do App para garantir que o DOM está pronto
+  // e que updateAdminUI já rodou
+  window.exportManager = new ExportManager();
 });
   </script>
 </body>
