@@ -1385,8 +1385,8 @@ class PharmacyScheduler {
             if (hasGreen) {
               const greenEmpName = Array.from(fridayOffMap[day])[0];
               const workingEmps = empsList.filter(e => e.name !== greenEmpName);
-              slots[0].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[0]) slots[0].push({ employeeName: workingEmps[0].name, color: 'NORMAL' });
+              slots[1].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[1]) slots[2].push({ employeeName: workingEmps[1].name, color: 'NORMAL' });
             } else {
               if (mod4 === 0 || mod4 === 2) {
@@ -1436,8 +1436,8 @@ class PharmacyScheduler {
           } else if (dayOfWeek === 5) {
             const hasGreen = fridayOffMap[day] && fridayOffMap[day].has(satOffEmp.name);
             if (hasGreen) {
-              slots[0].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
+              slots[1].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
             } else {
               slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
