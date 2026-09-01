@@ -834,7 +834,55 @@ const STORAGE_KEYS = {
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
 };
 
-const DEFAULT_EMPLOYEES = [];
+const DEFAULT_EMPLOYEES = [
+  {
+    id: 'emp-l2-1',
+    name: 'LIVIA',
+    role: 'Balconista (Novata)',
+    prefShift: 'NONE',
+    color: '#ec4899',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-l2-2',
+    name: 'MATHEUS',
+    role: 'Balconista (Novato)',
+    prefShift: 'NONE',
+    color: '#0284c7',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-l2-3',
+    name: 'SALETE',
+    role: 'Balconista (Experiente)',
+    prefShift: 'NONE',
+    color: '#10b981',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-l2-4',
+    name: 'NATÁLIA',
+    role: 'Balconista (Experiente)',
+    prefShift: 'NONE',
+    color: '#8b5cf6',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'emp-l2-5',
+    name: 'CARLOS',
+    role: 'Plantonista',
+    prefShift: 'PLANTONISTA',
+    plantaoDays: ['SAT', 'SUN'],
+    plantaoShift: '2',
+    color: '#f97316',
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
+  }
+];
 
 class Store {
   constructor() {
@@ -861,10 +909,61 @@ class Store {
     };
   }
 
+  getDefaultSeptember2026Schedule() {
+    const days = {
+      // Semana 1 (01 a 06/09): Manhã (Matheus + Salete) / Noite (Livia + Natália)
+      "2026-09-01": { dayNumber: 1, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-02": { dayNumber: 2, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-03": { dayNumber: 3, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-04": { dayNumber: 4, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }, { employeeName: 'NATÁLIA', color: 'GREEN' }] }] },
+      "2026-09-05": { dayNumber: 5, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-09-06": { dayNumber: 6, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 2 (07 a 13/09): Manhã (Livia + Natália) / Noite (Matheus + Salete)
+      "2026-09-07": { dayNumber: 7, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-08": { dayNumber: 8, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-09": { dayNumber: 9, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-10": { dayNumber: 10, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-11": { dayNumber: 11, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }, { employeeName: 'SALETE', color: 'GREEN' }] }] },
+      "2026-09-12": { dayNumber: 12, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-09-13": { dayNumber: 13, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 3 (14 a 20/09): Manhã (Matheus + Salete) / Noite (Livia + Natália)
+      "2026-09-14": { dayNumber: 14, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-15": { dayNumber: 15, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-16": { dayNumber: 16, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-17": { dayNumber: 17, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-18": { dayNumber: 18, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }, { employeeName: 'NATÁLIA', color: 'GREEN' }] }] },
+      "2026-09-19": { dayNumber: 19, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-09-20": { dayNumber: 20, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 4 (21 a 27/09): Manhã (Livia + Natália) / Noite (Matheus + Salete)
+      "2026-09-21": { dayNumber: 21, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-22": { dayNumber: 22, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-23": { dayNumber: 23, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-24": { dayNumber: 24, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-09-25": { dayNumber: 25, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }, { employeeName: 'SALETE', color: 'GREEN' }] }] },
+      "2026-09-26": { dayNumber: 26, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-09-27": { dayNumber: 27, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 5 (28 a 30/09): Manhã (Matheus + Salete) / Noite (Livia + Natália)
+      "2026-09-28": { dayNumber: 28, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-29": { dayNumber: 29, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-09-30": { dayNumber: 30, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] }
+    };
+    return {
+      yearMonth: '2026-09',
+      year: 2026,
+      month: 9,
+      generatedAt: new Date().toISOString(),
+      days: days
+    };
+  }
+
   init() {
     const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
 
-    // Limpar funcionários do L1 do armazenamento local do L2
+    // Se não tiver funcionários salvos ou só tiver dados vazios/da L1, inicializa a equipe L2
     let storedEmps = [];
     try {
       storedEmps = JSON.parse(localStorage.getItem(STORAGE_KEYS.EMPLOYEES) || '[]');
@@ -872,9 +971,12 @@ class Store {
       storedEmps = [];
     }
     storedEmps = storedEmps.filter(emp => !l1Names.includes((emp.name || '').trim().toUpperCase()));
+    if (storedEmps.length === 0) {
+      storedEmps = DEFAULT_EMPLOYEES;
+    }
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(storedEmps));
 
-    // Limpar escalas existentes removendo colaboradores do L1
+    // Inicializa escalas
     const existingSchedules = this.getAllSchedules();
     let schedulesModified = false;
     for (const ym in existingSchedules) {
@@ -895,6 +997,10 @@ class Store {
         }
       }
     }
+    if (!existingSchedules['2026-09']) {
+      existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();
+      schedulesModified = true;
+    }
     if (!existingSchedules['2026-08']) {
       existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
       schedulesModified = true;
@@ -909,12 +1015,13 @@ class Store {
   }
 
   resetDefaultEmployees() {
-    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
     const schedules = {
-      '2026-08': this.getDefaultAugust2026Schedule()
+      '2026-08': this.getDefaultAugust2026Schedule(),
+      '2026-09': this.getDefaultSeptember2026Schedule()
     };
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
-    return [];
+    return DEFAULT_EMPLOYEES;
   }
 
   getEmployees() {
@@ -1142,6 +1249,9 @@ class PharmacyScheduler {
   }
 
   generateMonthSchedule(year, month) {
+    if (year === 2026 && month === 9) {
+      return this.store.getDefaultSeptember2026Schedule();
+    }
     if (year === 2026 && month === 8) {
       return this.store.getDefaultAugust2026Schedule();
     }

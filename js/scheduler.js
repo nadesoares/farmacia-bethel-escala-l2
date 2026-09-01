@@ -25,6 +25,9 @@ class PharmacyScheduler {
   }
 
   generateMonthSchedule(year, month) {
+    if (year === 2026 && month === 9) {
+      return this.store.getDefaultSeptember2026Schedule();
+    }
     if (year === 2026 && month === 8) {
       return this.store.getDefaultAugust2026Schedule();
     }
