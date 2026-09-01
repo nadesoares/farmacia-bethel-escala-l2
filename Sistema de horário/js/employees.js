@@ -22,14 +22,14 @@ class EmployeeManager {
     const btnReset = document.getElementById('btn-reset-default-team');
     if (btnReset) {
       btnReset.addEventListener('click', () => {
-        if (confirm('Deseja restaurar a equipe padrão (MAURICIO, LILIAN e DJANE)?')) {
+        if (confirm('Deseja limpar a lista de colaboradores e reiniciar a equipe do L2?')) {
           this.store.resetDefaultEmployees();
           this.render();
           if (window.calendarManager) {
             window.calendarManager.renderFilterOptions();
             window.calendarManager.generateAndSaveCurrentMonth();
           }
-          window.app?.showToast('Equipe padrão restaurada!', 'success');
+          window.app?.showToast('Equipe do L2 reiniciada!', 'success');
         }
       });
     }

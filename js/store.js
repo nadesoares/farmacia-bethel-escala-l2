@@ -10,35 +10,7 @@ const STORAGE_KEYS = {
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
 };
 
-const DEFAULT_EMPLOYEES = [
-  {
-    id: 'emp-1',
-    name: 'MAURICIO',
-    role: 'Balconista',
-    prefShift: 'NONE',
-    color: '#0284c7',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'emp-2',
-    name: 'LILIAN',
-    role: 'Balconista',
-    prefShift: 'NONE',
-    color: '#ec4899',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'emp-3',
-    name: 'DJANE',
-    role: 'Balconista',
-    prefShift: 'NIGHT_WEEKDAY',
-    color: '#10b981',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString()
-  }
-];
+const DEFAULT_EMPLOYEES = [];
 
 class Store {
   constructor() {
@@ -46,80 +18,79 @@ class Store {
   }
 
   getDefaultAugust2026Schedule() {
-    const days = {
-      "2026-08-01": { dayNumber: 1, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
-      "2026-08-02": { dayNumber: 2, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
-      "2026-08-03": { dayNumber: 3, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-04": { dayNumber: 4, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-05": { dayNumber: 5, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-06": { dayNumber: 6, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-07": { dayNumber: 7, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'GREEN' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-08": { dayNumber: 8, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
-      "2026-08-09": { dayNumber: 9, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
-      "2026-08-10": { dayNumber: 10, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-11": { dayNumber: 11, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-12": { dayNumber: 12, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-13": { dayNumber: 13, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-14": { dayNumber: 14, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'GREEN' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-15": { dayNumber: 15, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
-      "2026-08-16": { dayNumber: 16, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
-      "2026-08-17": { dayNumber: 17, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-18": { dayNumber: 18, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-19": { dayNumber: 19, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-20": { dayNumber: 20, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-21": { dayNumber: 21, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-22": { dayNumber: 22, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }, { employeeName: 'DJANE', color: 'RED' }] }] },
-      "2026-08-23": { dayNumber: 23, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }, { workers: [] }, { workers: [] }] },
-      "2026-08-24": { dayNumber: 24, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-25": { dayNumber: 25, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-26": { dayNumber: 26, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-27": { dayNumber: 27, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }] },
-      "2026-08-28": { dayNumber: 28, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'NORMAL' }] }] },
-      "2026-08-29": { dayNumber: 29, dayOfWeek: 6, slots: [{ workers: [] }, { workers: [] }, { workers: [{ employeeName: 'MAURICIO', color: 'RED' }] }] },
-      "2026-08-30": { dayNumber: 30, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'DJANE', color: 'RED' }] }, { workers: [] }, { workers: [{ employeeName: 'LILIAN', color: 'RED' }] }] },
-      "2026-08-31": { dayNumber: 31, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LILIAN', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'DJANE', color: 'NORMAL' }, { employeeName: 'MAURICIO', color: 'NORMAL' }] }] }
-    };
+    const days = {};
+    for (let d = 1; d <= 31; d++) {
+      const dateStr = `2026-08-${String(d).padStart(2, '0')}`;
+      const dayOfWeek = new Date(2026, 7, d).getDay();
+      days[dateStr] = {
+        dayNumber: d,
+        dayOfWeek: dayOfWeek,
+        slots: [{ workers: [] }, { workers: [] }, { workers: [] }]
+      };
+    }
     return {
       yearMonth: '2026-08',
       year: 2026,
       month: 8,
-      generatedAt: '2026-08-01T00:00:00.000Z',
+      generatedAt: new Date().toISOString(),
       days: days
     };
   }
 
   init() {
-    if (!localStorage.getItem(STORAGE_KEYS.EMPLOYEES)) {
-      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
+    const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
+
+    // Limpar funcionários do L1 do armazenamento local do L2
+    let storedEmps = [];
+    try {
+      storedEmps = JSON.parse(localStorage.getItem(STORAGE_KEYS.EMPLOYEES) || '[]');
+    } catch (e) {
+      storedEmps = [];
     }
+    storedEmps = storedEmps.filter(emp => !l1Names.includes((emp.name || '').trim().toUpperCase()));
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(storedEmps));
+
+    // Limpar escalas existentes removendo colaboradores do L1
     const existingSchedules = this.getAllSchedules();
-    if (!existingSchedules['2026-07']) {
-      try {
-        if (window.PharmacyScheduler) {
-          const scheduler = new window.PharmacyScheduler(this);
-          existingSchedules['2026-07'] = scheduler.generateMonthSchedule(2026, 7);
-          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+    let schedulesModified = false;
+    for (const ym in existingSchedules) {
+      if (existingSchedules[ym]?.days) {
+        for (const dateKey in existingSchedules[ym].days) {
+          const day = existingSchedules[ym].days[dateKey];
+          if (day.slots) {
+            day.slots.forEach(slot => {
+              if (slot.workers && slot.workers.length > 0) {
+                const prevCount = slot.workers.length;
+                slot.workers = slot.workers.filter(w => !l1Names.includes((w.employeeName || '').trim().toUpperCase()));
+                if (slot.workers.length !== prevCount) {
+                  schedulesModified = true;
+                }
+              }
+            });
+          }
         }
-      } catch (e) {
-        console.warn('Auto-geração de Julho/2026:', e);
       }
     }
     if (!existingSchedules['2026-08']) {
       existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
+      schedulesModified = true;
+    }
+    if (schedulesModified) {
       localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
     }
+
     if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234' || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === 'Bd@9998') {
       localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
     }
   }
 
   resetDefaultEmployees() {
-    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
+    localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify([]));
     const schedules = {
       '2026-08': this.getDefaultAugust2026Schedule()
     };
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
-    return DEFAULT_EMPLOYEES;
+    return [];
   }
 
   getEmployees() {
