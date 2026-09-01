@@ -81,15 +81,26 @@ class App {
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
-          overlay.classList.add('hidden');
+          if (overlay.dataset.noBackdropClose === 'true' || overlay.id === 'modal-campaigns') {
+            return;
+          }
+          this.closeModal(overlay.id);
         }
       });
+    });
+
+    document.querySelectorAll('.modal-overlay form').forEach(form => {
+      form.addEventListener('input', () => { form.dataset.isDirty = 'true'; });
+      form.addEventListener('change', () => { form.dataset.isDirty = 'true'; });
+      form.addEventListener('submit', () => { form.dataset.isDirty = 'false'; });
     });
   }
 
   openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+      const form = modal.querySelector('form');
+      if (form) form.dataset.isDirty = 'false';
       modal.classList.remove('hidden');
       if (window.lucide) {
         window.lucide.createIcons();
@@ -99,9 +110,19 @@ class App {
 
   closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.add('hidden');
+    if (!modal) return true;
+
+    const dirtyForm = modal.querySelector('form[data-is-dirty="true"]');
+    if (dirtyForm) {
+      const confirmClose = confirm('Você tem alterações não salvas. Deseja realmente fechar?');
+      if (!confirmClose) {
+        return false;
+      }
+      dirtyForm.dataset.isDirty = 'false';
     }
+
+    modal.classList.add('hidden');
+    return true;
   }
 
   // --- AUTENTICAÇÃO ADMINISTRADOR ---

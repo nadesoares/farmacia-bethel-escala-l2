@@ -59,42 +59,22 @@
             <i data-lucide="calendar" class="icon-sm"></i>
             <span>Hoje</span>
           </button>
-        </div>
-      </div>
 
-      <!-- GRUPO CENTRO: BLOCO DE FILTROS AGRUPADO (EQUIPE DO MÊS) -->
-      <div class="topbar-center-group">
-        <div class="topbar-block block-filters filter-wrapper" style="position: relative;">
-          <button id="btn-month-team-group" class="btn btn-secondary-pill" title="Equipe do Mês">
-            <i data-lucide="users"></i>
-            <span>Equipe do Mês</span>
-            <i data-lucide="chevron-down" class="icon-sm"></i>
-          </button>
-
-          <div id="month-team-dropdown" class="dropdown-menu month-team-dropdown hidden" style="position: absolute; top: calc(100% + 0.35rem); left: 50%; transform: translateX(-50%); min-width: 220px; z-index: 50;">
-            <!-- 👥 Visualizar Todos / Filtrar Funcionário -->
-            <div class="dropdown-section">
-              <div class="dropdown-section-title" style="padding: 0.4rem 0.75rem 0.2rem 0.75rem; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
-                <i data-lucide="filter" style="width: 12px; height: 12px;"></i>
-                <span>Filtrar Visualização</span>
-              </div>
-              <div style="padding: 0.25rem 0.75rem 0.5rem 0.75rem;">
-                <select id="filter-employee" class="select-clean" style="width: 100%; border: 1px solid #cbd5e1; padding: 0.35rem 0.5rem; border-radius: 6px; font-size: 0.82rem; background: #ffffff;">
-                  <option value="ALL">Visualizar Todos</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="dropdown-divider" style="height: 1px; background: #e2e8f0; margin: 0.25rem 0;"></div>
-
-            <!-- 👤 Equipe ativa (Abrir Modal de Seleção de Colaboradores do Mês) -->
-            <button id="btn-month-team" class="dropdown-item admin-only hidden" style="display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.55rem 0.75rem; border: none; background: transparent; cursor: pointer; text-align: left; font-size: 0.85rem; font-weight: 600; color: #0f172a;">
-              <i data-lucide="user-check" style="width: 15px; height: 15px; color: #10b981;"></i>
-              <span>Equipe ativa</span>
-            </button>
+          <!-- RELÓGIO DIGITAL EM TEMPO REAL -->
+          <div id="realtime-clock" class="realtime-clock-badge" title="Horário Atual em Tempo Real">
+            <i data-lucide="clock" class="icon-sm"></i>
+            <span id="realtime-clock-text">--:--:--</span>
           </div>
+
+          <!-- BOTÃO PÚBLICO DE VISUALIZAÇÃO DE AÇÕES DA FARMÁCIA -->
+          <button id="btn-public-campaigns" class="btn btn-secondary-pill" title="Visualizar Ações e Campanhas da Farmácia" style="margin-left: 0.5rem;">
+            <i data-lucide="target" style="color: #eab308;"></i>
+            <span>Ações da Farmácia</span>
+          </button>
         </div>
       </div>
+
+
 
       <!-- GRUPO DIREITO: AÇÕES DE ADMIN E BOTÃO ADMIN -->
       <div class="topbar-right-group">
@@ -119,12 +99,6 @@
             <button id="btn-manage-team" class="dropdown-item">
               <i data-lucide="settings"></i>
               <span>Configurações</span>
-            </button>
-
-            <!-- 🎯 Ações na Farmácia -->
-            <button id="btn-manage-campaigns" class="dropdown-item">
-              <i data-lucide="target"></i>
-              <span>Ações na Farmácia</span>
             </button>
 
             <!-- ⬇ Baixar / Imprimir (Seção com Sub-itens) -->
@@ -273,7 +247,7 @@
   </div>
 
   <!-- MODAL: SELEÇÃO DA EQUIPE DO MÊS -->
-  <div id="modal-month-team" class="modal-overlay hidden">
+  <div id="modal-month-team" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 540px;">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -281,8 +255,8 @@
             <i data-lucide="user-check"></i>
           </div>
           <div>
-            <h3 id="month-team-modal-title">Equipe do Mês</h3>
-            <span class="text-xs text-muted">Marque quem vai trabalhar na escala deste mês (desmarque quem estiver de férias ou licença)</span>
+            <h3 id="month-team-modal-title">Seleção da Equipe & Gerar Escala</h3>
+            <span class="text-xs text-muted">Marque quem vai trabalhar na escala deste mês e clique em 'Gerar Escala'</span>
           </div>
         </div>
         <button class="btn-close-modal" data-modal="modal-month-team"><i data-lucide="x"></i></button>
@@ -306,14 +280,14 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal="modal-month-team">Cancelar</button>
         <button type="button" id="btn-save-month-team" class="btn btn-emerald">
-          <i data-lucide="check"></i> Salvar Equipe do Mês
+          <i data-lucide="sparkles"></i> Gerar Escala
         </button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: GESTÃO / CADASTRO DE FUNCIONÁRIOS (ADMIN) -->
-  <div id="modal-team-manager" class="modal-overlay hidden">
+  <div id="modal-team-manager" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 620px;">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -346,8 +320,37 @@
     </div>
   </div>
 
+  <!-- MODAL PÚBLICO: VISUALIZAÇÃO DE AÇÕES E CAMPANHAS DA FARMÁCIA -->
+  <div id="modal-public-campaigns" class="modal-overlay hidden">
+    <div class="modal-box modern-modal" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">
+            <i data-lucide="target"></i>
+          </div>
+          <div>
+            <h3>Ações e Campanhas da Farmácia</h3>
+            <span class="text-xs text-muted">Consulte a programação completa das ações de saúde e promoções</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" data-modal="modal-public-campaigns"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="public-campaigns-list-container" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 420px; overflow-y: auto; padding-right: 4px;">
+          <!-- Dynamic items rendered -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" id="btn-open-admin-campaigns" class="btn btn-emerald btn-sm admin-only hidden" title="Cadastrar nova ação ou gerenciar ações da farmácia">
+          <i data-lucide="plus"></i> Criar Nova Ação
+        </button>
+        <button type="button" class="btn btn-ghost" data-modal="modal-public-campaigns">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: GESTÃO DE AÇÕES E CAMPANHAS NA FARMÁCIA (ADMIN) -->
-  <div id="modal-campaigns" class="modal-overlay hidden">
+  <div id="modal-campaigns" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 650px;">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -377,18 +380,72 @@
             <div class="form-group flex-1">
               <label for="campaign-recurrence">Tipo de Recorrência / Duração *</label>
               <select id="campaign-recurrence" class="select-input-modern">
-                <option value="CUSTOM_RANGE">Período Personalizado (Início & Fim / N dias)</option>
-                <option value="WEEKLY">1x por Semana (Dia específico da semana)</option>
+                <option value="CUSTOM_RANGE">Período Personalizado (Início & Fim contínuo)</option>
                 <option value="WEEKDAYS_SPECIFIC">Dias Específicos da Semana (Seg, Ter, Qua...)</option>
-                <option value="WEEKEND">Todos os Fins de Semana</option>
-                <option value="MONTHLY_DAY">1x por Mês (Dia Fixo do Mês, ex: dia 15)</option>
-                <option value="MONTHLY_WEEKDAY">1x por Mês (Dia da Semana, ex: 1ª Terça)</option>
-                <option value="ANNUAL">Anual (Mesma data todos os anos)</option>
+                <option value="MONTHLY">1x por Mês (Dia Fixo ou por Semana/Dia)</option>
               </select>
             </div>
           </div>
 
-          <!-- Campos de datas / parâmetros de acordo com o tipo escolhido -->
+          <!-- SUB-OPÇÃO PARA DIAS ESPECÍFICOS DA SEMANA -->
+          <div id="group-specific-weekdays" class="form-group hidden" style="margin-top: 0.4rem;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: #475569;">Escolha os dias da semana em que a promoção ficará ativa *</label>
+            <div id="weekdays-chips-container" style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem;">
+              <button type="button" class="weekday-select-chip" data-day="MON">Seg</button>
+              <button type="button" class="weekday-select-chip" data-day="TUE">Ter</button>
+              <button type="button" class="weekday-select-chip selected" data-day="WED">Qua</button>
+              <button type="button" class="weekday-select-chip" data-day="THU">Qui</button>
+              <button type="button" class="weekday-select-chip" data-day="FRI">Sex</button>
+              <button type="button" class="weekday-select-chip" data-day="SAT">Sáb</button>
+              <button type="button" class="weekday-select-chip" data-day="SUN">Dom</button>
+            </div>
+          </div>
+
+          <!-- SUB-OPÇÃO PARA 1X POR MÊS -->
+          <div id="group-monthly-options" class="form-group hidden" style="margin-top: 0.4rem; background: #f8fafc; padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 0.4rem; display: block;">Modo Mensal *</label>
+            
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #0f172a;">
+                <input type="radio" name="monthly-mode" value="FIXED_DAY" checked style="accent-color: #10b981;"> Dia Fixo do Mês
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #0f172a;">
+                <input type="radio" name="monthly-mode" value="WEEKDAY_ORDINAL" style="accent-color: #10b981;"> Semana e Dia da Semana
+              </label>
+            </div>
+
+            <!-- Opção A: Dia Fixo (Digitar dia) -->
+            <div id="monthly-fixed-day-box" class="form-group" style="margin-top: 0.25rem;">
+              <label for="campaign-monthly-day" style="font-size: 0.75rem; color: #64748b;">Número do Dia do Mês (1 a 31) *</label>
+              <input type="number" id="campaign-monthly-day" class="form-input-modern" min="1" max="31" value="15" placeholder="Ex: 15">
+            </div>
+
+            <!-- Opção B: Semana e Dia da Semana (Dropdown) -->
+            <div id="monthly-weekday-ordinal-box" class="form-group hidden" style="margin-top: 0.25rem;">
+              <label for="campaign-monthly-ordinal" style="font-size: 0.75rem; color: #64748b;">Selecione a Semana e Dia *</label>
+              <select id="campaign-monthly-ordinal" class="select-input-modern">
+                <option value="1_TUE">1ª Terça-feira do mês</option>
+                <option value="1_WED">1ª Quarta-feira do mês</option>
+                <option value="1_THU">1ª Quinta-feira do mês</option>
+                <option value="1_FRI">1ª Sexta-feira do mês</option>
+                <option value="2_TUE">2ª Terça-feira do mês</option>
+                <option value="2_WED">2ª Quarta-feira do mês</option>
+                <option value="2_THU">2ª Quinta-feira do mês</option>
+                <option value="2_FRI">2ª Sexta-feira do mês</option>
+                <option value="3_TUE">3ª Terça-feira do mês</option>
+                <option value="3_WED">3ª Quarta-feira do mês</option>
+                <option value="3_THU">3ª Quinta-feira do mês</option>
+                <option value="3_FRI">3ª Sexta-feira do mês</option>
+                <option value="4_TUE">4ª Terça-feira do mês</option>
+                <option value="4_WED">4ª Quarta-feira do mês</option>
+                <option value="4_THU">4ª Quinta-feira do mês</option>
+                <option value="4_FRI">4ª Sexta-feira do mês</option>
+                <option value="LAST_FRI">Última Sexta-feira do mês</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Campos de datas / parâmetros -->
           <div id="campaign-dates-container" class="form-row" style="margin-top: 0.4rem;">
             <div class="form-group flex-1">
               <label for="campaign-start-date">Data de Início *</label>
@@ -431,14 +488,17 @@
         </div>
 
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; color: #64748b; display: flex; align-items: center; gap: 0.3rem;">
+          <i data-lucide="info" style="width: 13px; height: 13px; color: #0284c7;"></i> Lembre-se de salvar suas alterações antes de fechar.
+        </span>
         <button type="button" class="btn btn-ghost" data-modal="modal-campaigns">Fechar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: CADASTRO / EDIÇÃO DE FUNCIONÁRIO (COM ESCOLHA DE TURNO) -->
-  <div id="modal-employee" class="modal-overlay hidden">
+  <div id="modal-employee" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -525,7 +585,7 @@
   </div>
 
   <!-- MODAL: EDIÇÃO DE DIA (EXATAMENTE 3 TURNOS COM SUPORTE A MÚLTIPLAS PESSOAS) -->
-  <div id="modal-edit-slot" class="modal-overlay hidden">
+  <div id="modal-edit-slot" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 540px;">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -584,8 +644,10 @@
         </div>
       </form>
     </div>
+  </div>
+
   <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE CLOUD -->
-  <div id="modal-supabase-config" class="modal-overlay hidden">
+  <div id="modal-supabase-config" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 520px;">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -1356,19 +1418,13 @@ class PharmacyScheduler {
             if (hasGreen) {
               const greenEmpName = Array.from(fridayOffMap[day])[0];
               const workingEmps = empsList.filter(e => e.name !== greenEmpName);
-              slots[0].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[0]) slots[0].push({ employeeName: workingEmps[0].name, color: 'NORMAL' });
+              slots[1].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[1]) slots[2].push({ employeeName: workingEmps[1].name, color: 'NORMAL' });
             } else {
-              if (mod4 === 0 || mod4 === 2) {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
-                slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
-              } else {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
-                slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
-              }
+              slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
             }
           } else if (dayOfWeek === 6) {
             if (mod4 === 0) {
@@ -1407,8 +1463,8 @@ class PharmacyScheduler {
           } else if (dayOfWeek === 5) {
             const hasGreen = fridayOffMap[day] && fridayOffMap[day].has(satOffEmp.name);
             if (hasGreen) {
-              slots[0].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
+              slots[1].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
             } else {
               slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
@@ -1574,6 +1630,9 @@ class PharmacyScheduler {
         }
       });
 
+      // Aplicação Universal de Preferências de Turno (NIGHT_WEEKDAY, SHIFT_1, SHIFT_2, SHIFT_3)
+      this.enforceShiftPreferences(slots, dayOfWeek, day, fridayOffMap, empsList);
+
       daysSchedule[dayKey] = {
         dayNumber: day,
         dayOfWeek: dayOfWeek,
@@ -1589,6 +1648,71 @@ class PharmacyScheduler {
       generatedAt: new Date().toISOString(),
       days: daysSchedule
     };
+  }
+
+  enforceShiftPreferences(slots, dayOfWeek, day, fridayOffMap, empsList) {
+    if (!empsList || empsList.length === 0) return;
+
+    empsList.forEach(emp => {
+      if (!emp || !emp.prefShift || emp.prefShift === 'NONE' || emp.prefShift === 'PLANTONISTA') return;
+
+      const empName = (emp.name || '').trim().toUpperCase();
+
+      let currentSlotIdx = -1;
+      let workerObj = null;
+
+      for (let s = 0; s < 3; s++) {
+        const foundIdx = slots[s].findIndex(w => (w.employeeName || '').trim().toUpperCase() === empName);
+        if (foundIdx !== -1) {
+          currentSlotIdx = s;
+          workerObj = slots[s][foundIdx];
+          break;
+        }
+      }
+
+      if (currentSlotIdx === -1) return;
+
+      let targetSlotIdx = -1;
+
+      if (emp.prefShift === 'NIGHT_WEEKDAY') {
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          targetSlotIdx = 2; // 3º Turno (Noite) de Seg a Qui
+        } else if (dayOfWeek === 5) {
+          const isGreen = (workerObj.color === 'GREEN' || (fridayOffMap[day] && fridayOffMap[day].has(empName)));
+          targetSlotIdx = isGreen ? 1 : 0; // 1º Turno (Manhã Sexta) ou 2º Turno se folga verde
+        }
+      } else if (emp.prefShift === 'SHIFT_1') {
+        targetSlotIdx = 0; // 1º Turno (Manhã)
+      } else if (emp.prefShift === 'SHIFT_2') {
+        targetSlotIdx = 1; // 2º Turno (Intermediário)
+      } else if (emp.prefShift === 'SHIFT_3') {
+        targetSlotIdx = 2; // 3º Turno (Noite)
+      }
+
+      if (targetSlotIdx !== -1 && targetSlotIdx !== currentSlotIdx) {
+        const idxInCurrent = slots[currentSlotIdx].findIndex(w => (w.employeeName || '').trim().toUpperCase() === empName);
+        if (idxInCurrent !== -1) {
+          slots[currentSlotIdx].splice(idxInCurrent, 1);
+        }
+
+        let swapped = false;
+        for (let i = 0; i < slots[targetSlotIdx].length; i++) {
+          const targetWorker = slots[targetSlotIdx][i];
+          const targetEmp = empsList.find(e => (e.name || '').trim().toUpperCase() === (targetWorker.employeeName || '').trim().toUpperCase());
+          if (!targetEmp || targetEmp.prefShift === 'NONE') {
+            const [movedTarget] = slots[targetSlotIdx].splice(i, 1);
+            slots[currentSlotIdx].push(movedTarget);
+            slots[targetSlotIdx].push(workerObj);
+            swapped = true;
+            break;
+          }
+        }
+
+        if (!swapped) {
+          slots[targetSlotIdx].push(workerObj);
+        }
+      }
+    });
   }
 }
 
@@ -1662,8 +1786,9 @@ class CalendarManager {
   constructor(store, scheduler) {
     this.store = store;
     this.scheduler = scheduler;
-    this.currentYear = 2026;
-    this.currentMonth = 7;
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
     this.draggedWorker = null;
     this.hasJustDragged = false;
     this.init();
@@ -1671,7 +1796,30 @@ class CalendarManager {
 
   init() {
     this.bindEvents();
+    this.startRealtimeClock();
     this.render();
+    setTimeout(() => {
+      const todayCell = document.querySelector('.calendar-day-cell.is-today');
+      if (todayCell) {
+        todayCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 150);
+  }
+
+  startRealtimeClock() {
+    const updateClock = () => {
+      const clockTextEl = document.getElementById('realtime-clock-text');
+      if (!clockTextEl) return;
+      const now = new Date();
+      const dayNameMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+      const dayName = dayNameMap[now.getDay()];
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      clockTextEl.textContent = `${dayName}, ${hours}:${minutes}:${seconds}`;
+    };
+    updateClock();
+    setInterval(updateClock, 1000);
   }
 
   bindEvents() {
@@ -1705,7 +1853,7 @@ class CalendarManager {
     });
 
     document.getElementById('btn-auto-generate')?.addEventListener('click', () => {
-      this.generateAndSaveCurrentMonth();
+      this.openMonthTeamModal();
     });
 
     document.getElementById('btn-clear-month')?.addEventListener('click', () => {
@@ -1840,6 +1988,13 @@ class CalendarManager {
     
     const pickerEl = document.getElementById('month-picker');
     if (pickerEl) pickerEl.value = yearMonthKey;
+
+    const btnToday = document.getElementById('btn-today');
+    if (btnToday) {
+      const now = new Date();
+      const isCurrentMonthYear = (this.currentYear === now.getFullYear() && this.currentMonth === (now.getMonth() + 1));
+      btnToday.classList.toggle('btn-today-pulse', !isCurrentMonthYear);
+    }
 
     let schedule = this.store.getMonthSchedule(yearMonthKey);
     if (!schedule) {
@@ -1979,17 +2134,20 @@ class CalendarManager {
       const dayHeaderGroup = document.createElement('div');
       dayHeaderGroup.className = 'day-header-group';
 
-      const dayHeader = document.createElement('div');
+      const topRow = document.createElement('div');
+      topRow.className = 'day-header-top-row';
+
+      const dayHeader = document.createElement('span');
       dayHeader.className = 'day-header-badge';
       dayHeader.textContent = day;
-      dayHeaderGroup.appendChild(dayHeader);
+      topRow.appendChild(dayHeader);
 
       if (isToday) {
         const todayBadge = document.createElement('span');
         todayBadge.className = 'today-badge-tag';
         todayBadge.textContent = 'HOJE';
         todayBadge.title = 'Hoje';
-        dayHeaderGroup.appendChild(todayBadge);
+        topRow.appendChild(todayBadge);
       }
 
       if (isHoliday) {
@@ -1997,19 +2155,84 @@ class CalendarManager {
         holBadge.className = 'holiday-badge-tag';
         holBadge.textContent = 'Feriado';
         holBadge.title = holidayName;
-        dayHeaderGroup.appendChild(holBadge);
+        topRow.appendChild(holBadge);
       }
+
+      dayHeaderGroup.appendChild(topRow);
+
+      const actionsStack = document.createElement('div');
+      actionsStack.className = 'day-actions-stack';
 
       const allCampaigns = this.store.getCampaigns();
       const activeCampaigns = this.getCampaignStatusForDate(dateKey, allCampaigns);
-      activeCampaigns.forEach(({ campaign, isActive, isRadarAlert }) => {
+      const activeList = activeCampaigns.filter(c => c.isActive);
+      const radarColors = [];
+
+      const isSingleAction = (activeList.length === 1);
+
+      activeList.forEach(({ campaign, isRadarAlert }) => {
+        const campColor = campaign.color || '#eab308';
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+
         const campBadge = document.createElement('span');
         campBadge.className = `action-badge-tag ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
-        campBadge.style.backgroundColor = campaign.color || '#eab308';
+        campBadge.style.backgroundColor = campColor;
+        if (isRadarAlert) {
+          campBadge.style.setProperty('--badge-glow-start', hexToRgba(campColor, 0.7));
+          campBadge.style.setProperty('--badge-glow-peak', hexToRgba(campColor, 0.85));
+          campBadge.style.setProperty('--badge-glow-end', hexToRgba(campColor, 0));
+        }
         campBadge.title = `Ação: ${campaign.title}`;
         campBadge.innerHTML = `<i data-lucide="target" style="width: 10px; height: 10px;"></i> <span>${campaign.title}</span>`;
-        dayHeaderGroup.appendChild(campBadge);
+
+        if (isSingleAction) {
+          topRow.appendChild(campBadge);
+        } else {
+          actionsStack.appendChild(campBadge);
+        }
+
+        if (isRadarAlert) {
+          radarColors.push(campaign.color || '#eab308');
+        }
       });
+
+      if (!isSingleAction && actionsStack.children.length > 0) {
+        dayHeaderGroup.appendChild(actionsStack);
+      }
+
+      const uniqueRadarColors = [...new Set(radarColors)];
+      if (uniqueRadarColors.length === 1) {
+        const campColor = uniqueRadarColors[0];
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+        dayCell.classList.add('pulse-upcoming-day-box');
+        dayCell.style.setProperty('--campaign-color', campColor);
+        dayCell.style.setProperty('--campaign-glow-start', hexToRgba(campColor, 0.35));
+        dayCell.style.setProperty('--campaign-glow-peak', hexToRgba(campColor, 0.85));
+      } else if (uniqueRadarColors.length >= 2) {
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+        const shadowPeak = uniqueRadarColors.map((col, idx) => `0 0 ${16 + idx * 8}px ${4 + idx * 2}px ${hexToRgba(col, 0.85)}`).join(', ');
+        const shadowStart = uniqueRadarColors.map((col, idx) => `0 0 0 0 ${hexToRgba(col, 0.35)}`).join(', ');
+
+        dayCell.classList.add('pulse-gradient-day-box');
+        dayCell.style.setProperty('--campaign-gradient-border', `linear-gradient(135deg, ${uniqueRadarColors.join(', ')})`);
+        dayCell.style.setProperty('--campaign-glow-start', shadowStart);
+        dayCell.style.setProperty('--campaign-glow-peak', shadowPeak);
+      }
 
       topbarEl.appendChild(dayHeaderGroup);
 
@@ -2434,75 +2657,66 @@ class CalendarManager {
   getCampaignStatusForDate(dateKey, campaigns) {
     if (!campaigns || !Array.isArray(campaigns)) return [];
     const targetDate = new Date(dateKey + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const matches = [];
 
     campaigns.forEach(camp => {
       if (!camp.startDate) return;
       const startDate = new Date(camp.startDate + 'T00:00:00');
-      const endDate = camp.endDate ? new Date(camp.endDate + 'T00:00:00') : new Date(startDate);
+      const endDate = camp.endDate ? new Date(camp.endDate + 'T00:00:00') : new Date(2099, 11, 31);
+
+      if (targetDate < startDate || targetDate > endDate) return;
 
       let isActive = false;
-      let isRadarAlert = false;
 
-      const diffMs = startDate.getTime() - targetDate.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const isUpcoming3Days = (diffDays > 0 && diffDays <= 3);
+      const tYear = targetDate.getFullYear();
+      const tMonth = targetDate.getMonth();
+      const tDate = targetDate.getDate();
+      const tDay = targetDate.getDay();
+
+      const sMonth = startDate.getMonth();
+      const sDate = startDate.getDate();
+      const sDay = startDate.getDay();
 
       if (camp.recurrenceType === 'CUSTOM_RANGE') {
-        if (targetDate >= startDate && targetDate <= endDate) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'WEEKLY') {
-        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
+        isActive = true;
       } else if (camp.recurrenceType === 'WEEKDAYS_SPECIFIC') {
-        const dow = targetDate.getDay();
-        if (targetDate >= startDate && dow >= 1 && dow <= 5) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
+        const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dayStr = dayMap[tDay];
+        if (camp.specificDays && Array.isArray(camp.specificDays) && camp.specificDays.length > 0) {
+          isActive = camp.specificDays.includes(dayStr);
+        } else {
+          isActive = (tDay >= 1 && tDay <= 5);
         }
-      } else if (camp.recurrenceType === 'WEEKEND') {
-        const dow = targetDate.getDay();
-        if (targetDate >= startDate && (dow === 0 || dow === 6)) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'MONTHLY_DAY') {
-        if (targetDate >= startDate && targetDate.getDate() === startDate.getDate()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'MONTHLY_WEEKDAY') {
-        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay() && targetDate.getDate() <= 7) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'ANNUAL') {
-        if (targetDate.getMonth() === startDate.getMonth() && targetDate.getDate() === startDate.getDate()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
+      } else if (camp.recurrenceType === 'MONTHLY' || camp.recurrenceType === 'MONTHLY_DAY' || camp.recurrenceType === 'MONTHLY_WEEKDAY') {
+        if (camp.monthlyMode === 'WEEKDAY_ORDINAL' && camp.monthlyOrdinal) {
+          const parts = camp.monthlyOrdinal.split('_');
+          const dayMap = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+          const reqDay = dayMap[parts[1]];
+
+          if (tDay === reqDay) {
+            if (parts[0] === 'LAST') {
+              const nextWeekSameDay = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+              isActive = (nextWeekSameDay.getMonth() !== targetDate.getMonth());
+            } else {
+              const weekNum = Math.ceil(tDate / 7);
+              isActive = (weekNum === parseInt(parts[0], 10));
+            }
+          }
+        } else {
+          const targetDayNum = camp.monthlyDay || startDate.getDate();
+          isActive = (tDate === targetDayNum);
         }
       }
 
-      if (isActive || isRadarAlert) {
-        matches.push({ campaign: camp, isActive, isRadarAlert });
+      if (isActive) {
+        const diffMs = targetDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const isRadarAlert = (diffDays >= 0 && diffDays <= 3);
+
+        matches.push({ campaign: camp, isActive: true, isRadarAlert });
       }
     });
 
@@ -2552,11 +2766,51 @@ class CalendarManager {
   }
 
   bindCampaignEvents() {
-    const btnCampaigns = document.getElementById('btn-manage-campaigns');
-    if (btnCampaigns) {
-      btnCampaigns.addEventListener('click', () => {
-        document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+    const btnPublicCampaigns = document.getElementById('btn-public-campaigns');
+    if (btnPublicCampaigns) {
+      btnPublicCampaigns.addEventListener('click', () => {
+        this.openPublicCampaignsModal();
+      });
+    }
+
+    const btnOpenAdminCamp = document.getElementById('btn-open-admin-campaigns');
+    if (btnOpenAdminCamp) {
+      btnOpenAdminCamp.addEventListener('click', () => {
+        window.app?.closeModal('modal-public-campaigns');
         this.openCampaignsModal();
+      });
+    }
+
+    const selectRecurrence = document.getElementById('campaign-recurrence');
+    const updateRecurrenceFields = () => {
+      const val = selectRecurrence?.value;
+      const groupWeekdays = document.getElementById('group-specific-weekdays');
+      const groupMonthly = document.getElementById('group-monthly-options');
+
+      if (groupWeekdays) groupWeekdays.classList.toggle('hidden', val !== 'WEEKDAYS_SPECIFIC');
+      if (groupMonthly) groupMonthly.classList.toggle('hidden', val !== 'MONTHLY');
+    };
+
+    selectRecurrence?.addEventListener('change', updateRecurrenceFields);
+
+    const monthlyRadios = document.querySelectorAll('input[name="monthly-mode"]');
+    monthlyRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const fixedBox = document.getElementById('monthly-fixed-day-box');
+        const ordinalBox = document.getElementById('monthly-weekday-ordinal-box');
+        if (fixedBox && ordinalBox) {
+          fixedBox.classList.toggle('hidden', e.target.value !== 'FIXED_DAY');
+          ordinalBox.classList.toggle('hidden', e.target.value !== 'WEEKDAY_ORDINAL');
+        }
+      });
+    });
+
+    const chipsContainer = document.getElementById('weekdays-chips-container');
+    if (chipsContainer) {
+      chipsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.weekday-select-chip');
+        if (!btn) return;
+        btn.classList.toggle('selected');
       });
     }
 
@@ -2576,19 +2830,44 @@ class CalendarManager {
           return;
         }
 
+        let specificDays = [];
+        if (recurrenceType === 'WEEKDAYS_SPECIFIC') {
+          const selectedChips = document.querySelectorAll('#weekdays-chips-container .weekday-select-chip.selected');
+          specificDays = Array.from(selectedChips).map(btn => btn.dataset.day);
+          if (specificDays.length === 0) {
+            window.app?.showToast('Selecione pelo menos 1 dia da semana.', 'warning');
+            return;
+          }
+        }
+
+        let monthlyMode = 'FIXED_DAY';
+        let monthlyDay = 15;
+        let monthlyOrdinal = '1_TUE';
+        if (recurrenceType === 'MONTHLY') {
+          const checkedRadio = document.querySelector('input[name="monthly-mode"]:checked');
+          monthlyMode = checkedRadio ? checkedRadio.value : 'FIXED_DAY';
+          monthlyDay = parseInt(document.getElementById('campaign-monthly-day')?.value, 10) || 15;
+          monthlyOrdinal = document.getElementById('campaign-monthly-ordinal')?.value || '1_TUE';
+        }
+
         const campaign = {
           id: id || undefined,
           title,
           recurrenceType,
           startDate,
           endDate: endDate || startDate,
-          color
+          color,
+          specificDays,
+          monthlyMode,
+          monthlyDay,
+          monthlyOrdinal
         };
 
         this.store.saveCampaign(campaign);
         this.resetCampaignForm();
         this.renderCampaignsList();
         this.render();
+        window.app?.closeModal('modal-campaigns');
         window.app?.showToast(`🎯 Ação "${title}" salva com sucesso!`, 'success');
       });
     }
@@ -2626,6 +2905,137 @@ class CalendarManager {
     }
     const colorVal = document.getElementById('campaign-color-val');
     if (colorVal) colorVal.value = '#eab308';
+
+    document.getElementById('group-specific-weekdays')?.classList.add('hidden');
+    document.getElementById('group-monthly-options')?.classList.add('hidden');
+  }
+
+  formatCampaignDetailText(c) {
+    if (!c) return '';
+
+    const formatDate = (isoStr) => {
+      if (!isoStr) return '';
+      const [y, m, d] = isoStr.split('-');
+      return `${d}/${m}/${y}`;
+    };
+
+    const startStr = formatDate(c.startDate);
+    const endStr = formatDate(c.endDate || c.startDate);
+    const periodText = (startStr && endStr && startStr !== endStr)
+      ? `de ${startStr} até ${endStr}`
+      : `no dia ${startStr}`;
+
+    if (c.recurrenceType === 'WEEKDAYS_SPECIFIC' && c.specificDays && Array.isArray(c.specificDays) && c.specificDays.length > 0) {
+      const dayNameMap = {
+        MON: 'segunda-feira',
+        TUE: 'terça-feira',
+        WED: 'quarta-feira',
+        THU: 'quinta-feira',
+        FRI: 'sexta-feira',
+        SAT: 'sábado',
+        SUN: 'domingo'
+      };
+
+      const daysFormatted = c.specificDays.map(d => dayNameMap[d] || d);
+      let daysPhrase = '';
+
+      if (daysFormatted.length === 1) {
+        const single = daysFormatted[0];
+        daysPhrase = (single === 'sábado' || single === 'domingo')
+          ? `todo ${single}`
+          : `todas as ${single}s`;
+      } else {
+        const last = daysFormatted.pop();
+        daysPhrase = `todas as ${daysFormatted.join(', ')} e ${last}s`;
+      }
+
+      return `Esta ação está cadastrada ${daysPhrase} ${periodText}.`;
+    }
+
+    if (c.recurrenceType === 'CUSTOM_RANGE') {
+      return `Esta ação está cadastrada em período contínuo ${periodText}.`;
+    }
+
+    if (c.recurrenceType === 'MONTHLY' || c.recurrenceType === 'MONTHLY_DAY' || c.recurrenceType === 'MONTHLY_WEEKDAY') {
+      if (c.monthlyMode === 'WEEKDAY_ORDINAL' && c.monthlyOrdinal) {
+        const ordinalLabels = {
+          '1_TUE': '1ª Terça-feira',
+          '1_WED': '1ª Quarta-feira',
+          '1_THU': '1ª Quinta-feira',
+          '1_FRI': '1ª Sexta-feira',
+          '2_TUE': '2ª Terça-feira',
+          '2_WED': '2ª Quarta-feira',
+          '2_THU': '2ª Quinta-feira',
+          '2_FRI': '2ª Sexta-feira',
+          '3_TUE': '3ª Terça-feira',
+          '3_WED': '3ª Quarta-feira',
+          '3_THU': '3ª Quinta-feira',
+          '3_FRI': '3ª Sexta-feira',
+          '4_TUE': '4ª Terça-feira',
+          '4_WED': '4ª Quarta-feira',
+          '4_THU': '4ª Quinta-feira',
+          '4_FRI': '4ª Sexta-feira',
+          'LAST_FRI': 'Última Sexta-feira'
+        };
+        const label = ordinalLabels[c.monthlyOrdinal] || c.monthlyOrdinal;
+        return `Esta ação está cadastrada toda ${label} do mês ${periodText}.`;
+      } else {
+        const dayNum = c.monthlyDay || (c.startDate ? c.startDate.split('-')[2] : 15);
+        return `Esta ação está cadastrada todo dia ${dayNum} de cada mês ${periodText}.`;
+      }
+    }
+
+    return `Esta ação está cadastrada ${periodText}.`;
+  }
+
+  openPublicCampaignsModal() {
+    this.renderPublicCampaignsList();
+    const btnAdminCamp = document.getElementById('btn-open-admin-campaigns');
+    if (btnAdminCamp) {
+      btnAdminCamp.classList.toggle('hidden', !this.store.isAdmin());
+    }
+    window.app?.openModal('modal-public-campaigns');
+  }
+
+  renderPublicCampaignsList() {
+    const container = document.getElementById('public-campaigns-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const campaigns = this.store.getCampaigns();
+    if (!campaigns || campaigns.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: #64748b;">
+          <i data-lucide="target" style="width: 36px; height: 36px; opacity: 0.4; margin-bottom: 0.5rem;"></i>
+          <p style="margin: 0; font-size: 0.9rem; font-weight: 600;">Nenhuma ação ou campanha cadastrada no momento.</p>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+      return;
+    }
+
+    campaigns.forEach(c => {
+      const detailText = this.formatCampaignDetailText(c);
+      const itemEl = document.createElement('div');
+      itemEl.style.cssText = 'display: flex; gap: 0.85rem; padding: 0.85rem 1rem; background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: flex-start;';
+
+      itemEl.innerHTML = `
+        <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${c.color || '#eab308'}; flex-shrink: 0; margin-top: 0.25rem;"></div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">${c.title}</h4>
+            <span style="font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(234, 179, 8, 0.12); color: #b45309;">Ativa</span>
+          </div>
+          <p style="margin: 0.35rem 0 0 0; font-size: 0.83rem; color: #475569; font-weight: 500; line-height: 1.4;">
+            ${detailText}
+          </p>
+        </div>
+      `;
+
+      container.appendChild(itemEl);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
   }
 
   openCampaignsModal() {
@@ -2677,6 +3087,29 @@ class CalendarManager {
         const titleEl = document.getElementById('form-campaign-title');
         if (titleEl) titleEl.textContent = '✏️ Editar Ação / Campanha';
         document.getElementById('btn-cancel-campaign-edit')?.classList.remove('hidden');
+
+        // Toggle subfields
+        const groupWeekdays = document.getElementById('group-specific-weekdays');
+        const groupMonthly = document.getElementById('group-monthly-options');
+        if (groupWeekdays) groupWeekdays.classList.toggle('hidden', c.recurrenceType !== 'WEEKDAYS_SPECIFIC');
+        if (groupMonthly) groupMonthly.classList.toggle('hidden', c.recurrenceType !== 'MONTHLY');
+
+        if (c.specificDays && Array.isArray(c.specificDays)) {
+          document.querySelectorAll('#weekdays-chips-container .weekday-select-chip').forEach(btn => {
+            if (c.specificDays.includes(btn.dataset.day)) btn.classList.add('selected');
+            else btn.classList.remove('selected');
+          });
+        }
+
+        if (c.monthlyMode) {
+          const radio = document.querySelector(`input[name="monthly-mode"][value="${c.monthlyMode}"]`);
+          if (radio) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change'));
+          }
+        }
+        if (c.monthlyDay) document.getElementById('campaign-monthly-day').value = c.monthlyDay;
+        if (c.monthlyOrdinal) document.getElementById('campaign-monthly-ordinal').value = c.monthlyOrdinal;
 
         const colorContainer = document.getElementById('color-presets-container');
         if (colorContainer) {
@@ -2786,8 +3219,7 @@ class CalendarManager {
     const yearMonthKey = this.getYearMonthKey();
     this.store.setMonthSelectedEmployeeIds(yearMonthKey, checkedIds);
     window.app?.closeModal('modal-month-team');
-    this.render();
-    window.app?.showToast(`Equipe de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} atualizada (${checkedIds.length} colaboradores)! Clique em 'Gerar Escala' para gerar.`, 'success');
+    this.generateAndSaveCurrentMonth();
   }
 
   copyDaySchedule(dateKey, e) {
@@ -3249,21 +3681,47 @@ class App {
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.add('hidden');
+        if (e.target === overlay) {
+          if (overlay.dataset.noBackdropClose === 'true' || overlay.id === 'modal-campaigns') {
+            return;
+          }
+          this.closeModal(overlay.id);
+        }
       });
+    });
+
+    document.querySelectorAll('.modal-overlay form').forEach(form => {
+      form.addEventListener('input', () => { form.dataset.isDirty = 'true'; });
+      form.addEventListener('change', () => { form.dataset.isDirty = 'true'; });
+      form.addEventListener('submit', () => { form.dataset.isDirty = 'false'; });
     });
   }
 
   openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+      const form = modal.querySelector('form');
+      if (form) form.dataset.isDirty = 'false';
       modal.classList.remove('hidden');
       if (window.lucide) window.lucide.createIcons();
     }
   }
 
   closeModal(modalId) {
-    document.getElementById(modalId)?.classList.add('hidden');
+    const modal = document.getElementById(modalId);
+    if (!modal) return true;
+
+    const dirtyForm = modal.querySelector('form[data-is-dirty="true"]');
+    if (dirtyForm) {
+      const confirmClose = confirm('Você tem alterações não salvas. Deseja realmente fechar?');
+      if (!confirmClose) {
+        return false;
+      }
+      dirtyForm.dataset.isDirty = 'false';
+    }
+
+    modal.classList.add('hidden');
+    return true;
   }
 
   bindAdminAuth() {

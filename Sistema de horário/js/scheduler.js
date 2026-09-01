@@ -292,19 +292,13 @@ class PharmacyScheduler {
             if (hasGreen) {
               const greenEmpName = Array.from(fridayOffMap[day])[0];
               const workingEmps = empsList.filter(e => e.name !== greenEmpName);
-              slots[0].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[0]) slots[0].push({ employeeName: workingEmps[0].name, color: 'NORMAL' });
+              slots[1].push({ employeeName: greenEmpName, color: 'GREEN' });
               if (workingEmps[1]) slots[2].push({ employeeName: workingEmps[1].name, color: 'NORMAL' });
             } else {
-              if (mod4 === 0 || mod4 === 2) {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
-                slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
-              } else {
-                slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
-                slots[0].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
-                slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
-              }
+              slots[0].push({ employeeName: explicitNightEmp.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp1.name, color: 'NORMAL' });
+              slots[2].push({ employeeName: rotEmp2.name, color: 'NORMAL' });
             }
           } else if (dayOfWeek === 6) {
             if (mod4 === 0) {
@@ -343,8 +337,8 @@ class PharmacyScheduler {
           } else if (dayOfWeek === 5) {
             const hasGreen = fridayOffMap[day] && fridayOffMap[day].has(satOffEmp.name);
             if (hasGreen) {
-              slots[0].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
+              slots[1].push({ employeeName: satOffEmp.name, color: 'GREEN' });
               slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
             } else {
               slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
@@ -510,6 +504,9 @@ class PharmacyScheduler {
         }
       });
 
+      // Aplicação Universal de Preferências de Turno (NIGHT_WEEKDAY, SHIFT_1, SHIFT_2, SHIFT_3)
+      this.enforceShiftPreferences(slots, dayOfWeek, day, fridayOffMap, empsList);
+
       daysSchedule[dayKey] = {
         dayNumber: day,
         dayOfWeek: dayOfWeek,
@@ -525,6 +522,71 @@ class PharmacyScheduler {
       generatedAt: new Date().toISOString(),
       days: daysSchedule
     };
+  }
+
+  enforceShiftPreferences(slots, dayOfWeek, day, fridayOffMap, empsList) {
+    if (!empsList || empsList.length === 0) return;
+
+    empsList.forEach(emp => {
+      if (!emp || !emp.prefShift || emp.prefShift === 'NONE' || emp.prefShift === 'PLANTONISTA') return;
+
+      const empName = (emp.name || '').trim().toUpperCase();
+
+      let currentSlotIdx = -1;
+      let workerObj = null;
+
+      for (let s = 0; s < 3; s++) {
+        const foundIdx = slots[s].findIndex(w => (w.employeeName || '').trim().toUpperCase() === empName);
+        if (foundIdx !== -1) {
+          currentSlotIdx = s;
+          workerObj = slots[s][foundIdx];
+          break;
+        }
+      }
+
+      if (currentSlotIdx === -1) return;
+
+      let targetSlotIdx = -1;
+
+      if (emp.prefShift === 'NIGHT_WEEKDAY') {
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          targetSlotIdx = 2; // 3º Turno (Noite) de Seg a Qui
+        } else if (dayOfWeek === 5) {
+          const isGreen = (workerObj.color === 'GREEN' || (fridayOffMap[day] && fridayOffMap[day].has(empName)));
+          targetSlotIdx = isGreen ? 1 : 0; // 1º Turno (Manhã Sexta) ou 2º Turno se folga verde
+        }
+      } else if (emp.prefShift === 'SHIFT_1') {
+        targetSlotIdx = 0; // 1º Turno (Manhã)
+      } else if (emp.prefShift === 'SHIFT_2') {
+        targetSlotIdx = 1; // 2º Turno (Intermediário)
+      } else if (emp.prefShift === 'SHIFT_3') {
+        targetSlotIdx = 2; // 3º Turno (Noite)
+      }
+
+      if (targetSlotIdx !== -1 && targetSlotIdx !== currentSlotIdx) {
+        const idxInCurrent = slots[currentSlotIdx].findIndex(w => (w.employeeName || '').trim().toUpperCase() === empName);
+        if (idxInCurrent !== -1) {
+          slots[currentSlotIdx].splice(idxInCurrent, 1);
+        }
+
+        let swapped = false;
+        for (let i = 0; i < slots[targetSlotIdx].length; i++) {
+          const targetWorker = slots[targetSlotIdx][i];
+          const targetEmp = empsList.find(e => (e.name || '').trim().toUpperCase() === (targetWorker.employeeName || '').trim().toUpperCase());
+          if (!targetEmp || targetEmp.prefShift === 'NONE') {
+            const [movedTarget] = slots[targetSlotIdx].splice(i, 1);
+            slots[currentSlotIdx].push(movedTarget);
+            slots[targetSlotIdx].push(workerObj);
+            swapped = true;
+            break;
+          }
+        }
+
+        if (!swapped) {
+          slots[targetSlotIdx].push(workerObj);
+        }
+      }
+    });
   }
 }
 

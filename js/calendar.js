@@ -67,9 +67,10 @@ class CalendarManager {
     this.store = store;
     this.scheduler = scheduler;
     
-    // Inicia no mês padrão de referência (Julho de 2026)
-    this.currentYear = 2026;
-    this.currentMonth = 7;
+    // Inicia dinamicamente no mês e ano atual em tempo real (HOJE)
+    const now = new Date();
+    this.currentYear = now.getFullYear();
+    this.currentMonth = now.getMonth() + 1;
 
     this.draggedWorker = null;
     this.hasJustDragged = false;
@@ -79,7 +80,30 @@ class CalendarManager {
 
   init() {
     this.bindEvents();
+    this.startRealtimeClock();
     this.render();
+    setTimeout(() => {
+      const todayCell = document.querySelector('.calendar-day-cell.is-today');
+      if (todayCell) {
+        todayCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 150);
+  }
+
+  startRealtimeClock() {
+    const updateClock = () => {
+      const clockTextEl = document.getElementById('realtime-clock-text');
+      if (!clockTextEl) return;
+      const now = new Date();
+      const dayNameMap = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+      const dayName = dayNameMap[now.getDay()];
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      clockTextEl.textContent = `${dayName}, ${hours}:${minutes}:${seconds}`;
+    };
+    updateClock();
+    setInterval(updateClock, 1000);
   }
 
   bindEvents() {
@@ -103,7 +127,7 @@ class CalendarManager {
     });
 
     document.getElementById('btn-auto-generate')?.addEventListener('click', () => {
-      this.generateAndSaveCurrentMonth();
+      this.openMonthTeamModal();
     });
 
     // Botão Equipe do Mês
@@ -260,6 +284,13 @@ class CalendarManager {
     const pickerEl = document.getElementById('month-picker');
     if (pickerEl) pickerEl.value = yearMonthKey;
 
+    const btnToday = document.getElementById('btn-today');
+    if (btnToday) {
+      const now = new Date();
+      const isCurrentMonthYear = (this.currentYear === now.getFullYear() && this.currentMonth === (now.getMonth() + 1));
+      btnToday.classList.toggle('btn-today-pulse', !isCurrentMonthYear);
+    }
+
     let schedule = this.store.getMonthSchedule(yearMonthKey);
     if (!schedule) {
       schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
@@ -415,17 +446,20 @@ class CalendarManager {
       const dayHeaderGroup = document.createElement('div');
       dayHeaderGroup.className = 'day-header-group';
 
-      const dayHeader = document.createElement('div');
+      const topRow = document.createElement('div');
+      topRow.className = 'day-header-top-row';
+
+      const dayHeader = document.createElement('span');
       dayHeader.className = 'day-header-badge';
       dayHeader.textContent = day;
-      dayHeaderGroup.appendChild(dayHeader);
+      topRow.appendChild(dayHeader);
 
       if (isToday) {
         const todayBadge = document.createElement('span');
         todayBadge.className = 'today-badge-tag';
         todayBadge.textContent = 'HOJE';
         todayBadge.title = 'Hoje';
-        dayHeaderGroup.appendChild(todayBadge);
+        topRow.appendChild(todayBadge);
       }
 
       if (isHoliday) {
@@ -433,19 +467,84 @@ class CalendarManager {
         holBadge.className = 'holiday-badge-tag';
         holBadge.textContent = 'Feriado';
         holBadge.title = holidayName;
-        dayHeaderGroup.appendChild(holBadge);
+        topRow.appendChild(holBadge);
       }
+
+      dayHeaderGroup.appendChild(topRow);
+
+      const actionsStack = document.createElement('div');
+      actionsStack.className = 'day-actions-stack';
 
       const allCampaigns = this.store.getCampaigns();
       const activeCampaigns = this.getCampaignStatusForDate(dateKey, allCampaigns);
-      activeCampaigns.forEach(({ campaign, isActive, isRadarAlert }) => {
+      const activeList = activeCampaigns.filter(c => c.isActive);
+      const radarColors = [];
+
+      const isSingleAction = (activeList.length === 1);
+
+      activeList.forEach(({ campaign, isRadarAlert }) => {
+        const campColor = campaign.color || '#eab308';
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+
         const campBadge = document.createElement('span');
         campBadge.className = `action-badge-tag ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
-        campBadge.style.backgroundColor = campaign.color || '#eab308';
+        campBadge.style.backgroundColor = campColor;
+        if (isRadarAlert) {
+          campBadge.style.setProperty('--badge-glow-start', hexToRgba(campColor, 0.7));
+          campBadge.style.setProperty('--badge-glow-peak', hexToRgba(campColor, 0.85));
+          campBadge.style.setProperty('--badge-glow-end', hexToRgba(campColor, 0));
+        }
         campBadge.title = `Ação: ${campaign.title}`;
         campBadge.innerHTML = `<i data-lucide="target" style="width: 10px; height: 10px;"></i> <span>${campaign.title}</span>`;
-        dayHeaderGroup.appendChild(campBadge);
+
+        if (isSingleAction) {
+          topRow.appendChild(campBadge);
+        } else {
+          actionsStack.appendChild(campBadge);
+        }
+
+        if (isRadarAlert) {
+          radarColors.push(campaign.color || '#eab308');
+        }
       });
+
+      if (!isSingleAction && actionsStack.children.length > 0) {
+        dayHeaderGroup.appendChild(actionsStack);
+      }
+
+      const uniqueRadarColors = [...new Set(radarColors)];
+      if (uniqueRadarColors.length === 1) {
+        const campColor = uniqueRadarColors[0];
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+        dayCell.classList.add('pulse-upcoming-day-box');
+        dayCell.style.setProperty('--campaign-color', campColor);
+        dayCell.style.setProperty('--campaign-glow-start', hexToRgba(campColor, 0.35));
+        dayCell.style.setProperty('--campaign-glow-peak', hexToRgba(campColor, 0.85));
+      } else if (uniqueRadarColors.length >= 2) {
+        const hexToRgba = (hex, alpha) => {
+          let c = (hex || '#eab308').replace('#', '');
+          if (c.length === 3) c = c.split('').map(x => x + x).join('');
+          const num = parseInt(c, 16);
+          return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        };
+        const shadowPeak = uniqueRadarColors.map((col, idx) => `0 0 ${16 + idx * 8}px ${4 + idx * 2}px ${hexToRgba(col, 0.85)}`).join(', ');
+        const shadowStart = uniqueRadarColors.map((col, idx) => `0 0 0 0 ${hexToRgba(col, 0.35)}`).join(', ');
+
+        dayCell.classList.add('pulse-gradient-day-box');
+        dayCell.style.setProperty('--campaign-gradient-border', `linear-gradient(135deg, ${uniqueRadarColors.join(', ')})`);
+        dayCell.style.setProperty('--campaign-glow-start', shadowStart);
+        dayCell.style.setProperty('--campaign-glow-peak', shadowPeak);
+      }
 
       topbarEl.appendChild(dayHeaderGroup);
 
@@ -986,75 +1085,66 @@ class CalendarManager {
   getCampaignStatusForDate(dateKey, campaigns) {
     if (!campaigns || !Array.isArray(campaigns)) return [];
     const targetDate = new Date(dateKey + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const matches = [];
 
     campaigns.forEach(camp => {
       if (!camp.startDate) return;
       const startDate = new Date(camp.startDate + 'T00:00:00');
-      const endDate = camp.endDate ? new Date(camp.endDate + 'T00:00:00') : new Date(startDate);
+      const endDate = camp.endDate ? new Date(camp.endDate + 'T00:00:00') : new Date(2099, 11, 31);
+
+      if (targetDate < startDate || targetDate > endDate) return;
 
       let isActive = false;
-      let isRadarAlert = false;
 
-      const diffMs = startDate.getTime() - targetDate.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const isUpcoming3Days = (diffDays > 0 && diffDays <= 3);
+      const tYear = targetDate.getFullYear();
+      const tMonth = targetDate.getMonth();
+      const tDate = targetDate.getDate();
+      const tDay = targetDate.getDay();
+
+      const sMonth = startDate.getMonth();
+      const sDate = startDate.getDate();
+      const sDay = startDate.getDay();
 
       if (camp.recurrenceType === 'CUSTOM_RANGE') {
-        if (targetDate >= startDate && targetDate <= endDate) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'WEEKLY') {
-        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
+        isActive = true;
       } else if (camp.recurrenceType === 'WEEKDAYS_SPECIFIC') {
-        const dow = targetDate.getDay();
-        if (targetDate >= startDate && dow >= 1 && dow <= 5) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
+        const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dayStr = dayMap[tDay];
+        if (camp.specificDays && Array.isArray(camp.specificDays) && camp.specificDays.length > 0) {
+          isActive = camp.specificDays.includes(dayStr);
+        } else {
+          isActive = (tDay >= 1 && tDay <= 5);
         }
-      } else if (camp.recurrenceType === 'WEEKEND') {
-        const dow = targetDate.getDay();
-        if (targetDate >= startDate && (dow === 0 || dow === 6)) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'MONTHLY_DAY') {
-        if (targetDate >= startDate && targetDate.getDate() === startDate.getDate()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'MONTHLY_WEEKDAY') {
-        if (targetDate >= startDate && targetDate.getDay() === startDate.getDay() && targetDate.getDate() <= 7) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
-        }
-      } else if (camp.recurrenceType === 'ANNUAL') {
-        if (targetDate.getMonth() === startDate.getMonth() && targetDate.getDate() === startDate.getDate()) {
-          isActive = true;
-          isRadarAlert = true;
-        } else if (isUpcoming3Days) {
-          isRadarAlert = true;
+      } else if (camp.recurrenceType === 'MONTHLY' || camp.recurrenceType === 'MONTHLY_DAY' || camp.recurrenceType === 'MONTHLY_WEEKDAY') {
+        if (camp.monthlyMode === 'WEEKDAY_ORDINAL' && camp.monthlyOrdinal) {
+          const parts = camp.monthlyOrdinal.split('_');
+          const dayMap = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+          const reqDay = dayMap[parts[1]];
+
+          if (tDay === reqDay) {
+            if (parts[0] === 'LAST') {
+              const nextWeekSameDay = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+              isActive = (nextWeekSameDay.getMonth() !== targetDate.getMonth());
+            } else {
+              const weekNum = Math.ceil(tDate / 7);
+              isActive = (weekNum === parseInt(parts[0], 10));
+            }
+          }
+        } else {
+          const targetDayNum = camp.monthlyDay || startDate.getDate();
+          isActive = (tDate === targetDayNum);
         }
       }
 
-      if (isActive || isRadarAlert) {
-        matches.push({ campaign: camp, isActive, isRadarAlert });
+      if (isActive) {
+        const diffMs = targetDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const isRadarAlert = (diffDays >= 0 && diffDays <= 3);
+
+        matches.push({ campaign: camp, isActive: true, isRadarAlert });
       }
     });
 
@@ -1103,12 +1193,51 @@ class CalendarManager {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  bindCampaignEvents() {
-    const btnCampaigns = document.getElementById('btn-manage-campaigns');
-    if (btnCampaigns) {
-      btnCampaigns.addEventListener('click', () => {
-        document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+    const btnPublicCampaigns = document.getElementById('btn-public-campaigns');
+    if (btnPublicCampaigns) {
+      btnPublicCampaigns.addEventListener('click', () => {
+        this.openPublicCampaignsModal();
+      });
+    }
+
+    const btnOpenAdminCamp = document.getElementById('btn-open-admin-campaigns');
+    if (btnOpenAdminCamp) {
+      btnOpenAdminCamp.addEventListener('click', () => {
+        window.app?.closeModal('modal-public-campaigns');
         this.openCampaignsModal();
+      });
+    }
+
+    const selectRecurrence = document.getElementById('campaign-recurrence');
+    const updateRecurrenceFields = () => {
+      const val = selectRecurrence?.value;
+      const groupWeekdays = document.getElementById('group-specific-weekdays');
+      const groupMonthly = document.getElementById('group-monthly-options');
+
+      if (groupWeekdays) groupWeekdays.classList.toggle('hidden', val !== 'WEEKDAYS_SPECIFIC');
+      if (groupMonthly) groupMonthly.classList.toggle('hidden', val !== 'MONTHLY');
+    };
+
+    selectRecurrence?.addEventListener('change', updateRecurrenceFields);
+
+    const monthlyRadios = document.querySelectorAll('input[name="monthly-mode"]');
+    monthlyRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const fixedBox = document.getElementById('monthly-fixed-day-box');
+        const ordinalBox = document.getElementById('monthly-weekday-ordinal-box');
+        if (fixedBox && ordinalBox) {
+          fixedBox.classList.toggle('hidden', e.target.value !== 'FIXED_DAY');
+          ordinalBox.classList.toggle('hidden', e.target.value !== 'WEEKDAY_ORDINAL');
+        }
+      });
+    });
+
+    const chipsContainer = document.getElementById('weekdays-chips-container');
+    if (chipsContainer) {
+      chipsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.weekday-select-chip');
+        if (!btn) return;
+        btn.classList.toggle('selected');
       });
     }
 
@@ -1128,19 +1257,44 @@ class CalendarManager {
           return;
         }
 
+        let specificDays = [];
+        if (recurrenceType === 'WEEKDAYS_SPECIFIC') {
+          const selectedChips = document.querySelectorAll('#weekdays-chips-container .weekday-select-chip.selected');
+          specificDays = Array.from(selectedChips).map(btn => btn.dataset.day);
+          if (specificDays.length === 0) {
+            window.app?.showToast('Selecione pelo menos 1 dia da semana.', 'warning');
+            return;
+          }
+        }
+
+        let monthlyMode = 'FIXED_DAY';
+        let monthlyDay = 15;
+        let monthlyOrdinal = '1_TUE';
+        if (recurrenceType === 'MONTHLY') {
+          const checkedRadio = document.querySelector('input[name="monthly-mode"]:checked');
+          monthlyMode = checkedRadio ? checkedRadio.value : 'FIXED_DAY';
+          monthlyDay = parseInt(document.getElementById('campaign-monthly-day')?.value, 10) || 15;
+          monthlyOrdinal = document.getElementById('campaign-monthly-ordinal')?.value || '1_TUE';
+        }
+
         const campaign = {
           id: id || undefined,
           title,
           recurrenceType,
           startDate,
           endDate: endDate || startDate,
-          color
+          color,
+          specificDays,
+          monthlyMode,
+          monthlyDay,
+          monthlyOrdinal
         };
 
         this.store.saveCampaign(campaign);
         this.resetCampaignForm();
         this.renderCampaignsList();
         this.render();
+        window.app?.closeModal('modal-campaigns');
         window.app?.showToast(`🎯 Ação "${title}" salva com sucesso!`, 'success');
       });
     }
@@ -1178,6 +1332,137 @@ class CalendarManager {
     }
     const colorVal = document.getElementById('campaign-color-val');
     if (colorVal) colorVal.value = '#eab308';
+
+    document.getElementById('group-specific-weekdays')?.classList.add('hidden');
+    document.getElementById('group-monthly-options')?.classList.add('hidden');
+  }
+
+  formatCampaignDetailText(c) {
+    if (!c) return '';
+
+    const formatDate = (isoStr) => {
+      if (!isoStr) return '';
+      const [y, m, d] = isoStr.split('-');
+      return `${d}/${m}/${y}`;
+    };
+
+    const startStr = formatDate(c.startDate);
+    const endStr = formatDate(c.endDate || c.startDate);
+    const periodText = (startStr && endStr && startStr !== endStr)
+      ? `de ${startStr} até ${endStr}`
+      : `no dia ${startStr}`;
+
+    if (c.recurrenceType === 'WEEKDAYS_SPECIFIC' && c.specificDays && Array.isArray(c.specificDays) && c.specificDays.length > 0) {
+      const dayNameMap = {
+        MON: 'segunda-feira',
+        TUE: 'terça-feira',
+        WED: 'quarta-feira',
+        THU: 'quinta-feira',
+        FRI: 'sexta-feira',
+        SAT: 'sábado',
+        SUN: 'domingo'
+      };
+
+      const daysFormatted = c.specificDays.map(d => dayNameMap[d] || d);
+      let daysPhrase = '';
+
+      if (daysFormatted.length === 1) {
+        const single = daysFormatted[0];
+        daysPhrase = (single === 'sábado' || single === 'domingo')
+          ? `todo ${single}`
+          : `todas as ${single}s`;
+      } else {
+        const last = daysFormatted.pop();
+        daysPhrase = `todas as ${daysFormatted.join(', ')} e ${last}s`;
+      }
+
+      return `Esta ação está cadastrada ${daysPhrase} ${periodText}.`;
+    }
+
+    if (c.recurrenceType === 'CUSTOM_RANGE') {
+      return `Esta ação está cadastrada em período contínuo ${periodText}.`;
+    }
+
+    if (c.recurrenceType === 'MONTHLY' || c.recurrenceType === 'MONTHLY_DAY' || c.recurrenceType === 'MONTHLY_WEEKDAY') {
+      if (c.monthlyMode === 'WEEKDAY_ORDINAL' && c.monthlyOrdinal) {
+        const ordinalLabels = {
+          '1_TUE': '1ª Terça-feira',
+          '1_WED': '1ª Quarta-feira',
+          '1_THU': '1ª Quinta-feira',
+          '1_FRI': '1ª Sexta-feira',
+          '2_TUE': '2ª Terça-feira',
+          '2_WED': '2ª Quarta-feira',
+          '2_THU': '2ª Quinta-feira',
+          '2_FRI': '2ª Sexta-feira',
+          '3_TUE': '3ª Terça-feira',
+          '3_WED': '3ª Quarta-feira',
+          '3_THU': '3ª Quinta-feira',
+          '3_FRI': '3ª Sexta-feira',
+          '4_TUE': '4ª Terça-feira',
+          '4_WED': '4ª Quarta-feira',
+          '4_THU': '4ª Quinta-feira',
+          '4_FRI': '4ª Sexta-feira',
+          'LAST_FRI': 'Última Sexta-feira'
+        };
+        const label = ordinalLabels[c.monthlyOrdinal] || c.monthlyOrdinal;
+        return `Esta ação está cadastrada toda ${label} do mês ${periodText}.`;
+      } else {
+        const dayNum = c.monthlyDay || (c.startDate ? c.startDate.split('-')[2] : 15);
+        return `Esta ação está cadastrada todo dia ${dayNum} de cada mês ${periodText}.`;
+      }
+    }
+
+    return `Esta ação está cadastrada ${periodText}.`;
+  }
+
+  openPublicCampaignsModal() {
+    this.renderPublicCampaignsList();
+    const btnAdminCamp = document.getElementById('btn-open-admin-campaigns');
+    if (btnAdminCamp) {
+      btnAdminCamp.classList.toggle('hidden', !this.store.isAdmin());
+    }
+    window.app?.openModal('modal-public-campaigns');
+  }
+
+  renderPublicCampaignsList() {
+    const container = document.getElementById('public-campaigns-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const campaigns = this.store.getCampaigns();
+    if (!campaigns || campaigns.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: #64748b;">
+          <i data-lucide="target" style="width: 36px; height: 36px; opacity: 0.4; margin-bottom: 0.5rem;"></i>
+          <p style="margin: 0; font-size: 0.9rem; font-weight: 600;">Nenhuma ação ou campanha cadastrada no momento.</p>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+      return;
+    }
+
+    campaigns.forEach(c => {
+      const detailText = this.formatCampaignDetailText(c);
+      const itemEl = document.createElement('div');
+      itemEl.style.cssText = 'display: flex; gap: 0.85rem; padding: 0.85rem 1rem; background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: flex-start;';
+
+      itemEl.innerHTML = `
+        <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${c.color || '#eab308'}; flex-shrink: 0; margin-top: 0.25rem;"></div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">${c.title}</h4>
+            <span style="font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(234, 179, 8, 0.12); color: #b45309;">Ativa</span>
+          </div>
+          <p style="margin: 0.35rem 0 0 0; font-size: 0.83rem; color: #475569; font-weight: 500; line-height: 1.4;">
+            ${detailText}
+          </p>
+        </div>
+      `;
+
+      container.appendChild(itemEl);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
   }
 
   openCampaignsModal() {
@@ -1229,6 +1514,29 @@ class CalendarManager {
         const titleEl = document.getElementById('form-campaign-title');
         if (titleEl) titleEl.textContent = '✏️ Editar Ação / Campanha';
         document.getElementById('btn-cancel-campaign-edit')?.classList.remove('hidden');
+
+        // Toggle subfields
+        const groupWeekdays = document.getElementById('group-specific-weekdays');
+        const groupMonthly = document.getElementById('group-monthly-options');
+        if (groupWeekdays) groupWeekdays.classList.toggle('hidden', c.recurrenceType !== 'WEEKDAYS_SPECIFIC');
+        if (groupMonthly) groupMonthly.classList.toggle('hidden', c.recurrenceType !== 'MONTHLY');
+
+        if (c.specificDays && Array.isArray(c.specificDays)) {
+          document.querySelectorAll('#weekdays-chips-container .weekday-select-chip').forEach(btn => {
+            if (c.specificDays.includes(btn.dataset.day)) btn.classList.add('selected');
+            else btn.classList.remove('selected');
+          });
+        }
+
+        if (c.monthlyMode) {
+          const radio = document.querySelector(`input[name="monthly-mode"][value="${c.monthlyMode}"]`);
+          if (radio) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change'));
+          }
+        }
+        if (c.monthlyDay) document.getElementById('campaign-monthly-day').value = c.monthlyDay;
+        if (c.monthlyOrdinal) document.getElementById('campaign-monthly-ordinal').value = c.monthlyOrdinal;
 
         const colorContainer = document.getElementById('color-presets-container');
         if (colorContainer) {
@@ -1338,8 +1646,7 @@ class CalendarManager {
     const yearMonthKey = this.getYearMonthKey();
     this.store.setMonthSelectedEmployeeIds(yearMonthKey, checkedIds);
     window.app?.closeModal('modal-month-team');
-    this.render();
-    window.app?.showToast(`Equipe de ${MONTH_NAMES[this.currentMonth - 1]}/${this.currentYear} atualizada (${checkedIds.length} colaboradores)! Clique em 'Gerar Escala' para gerar.`, 'success');
+    this.generateAndSaveCurrentMonth();
   }
 
   copyDaySchedule(dateKey, e) {
