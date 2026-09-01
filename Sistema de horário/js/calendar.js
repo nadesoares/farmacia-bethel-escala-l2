@@ -341,84 +341,23 @@ class CalendarManager {
       });
 
       metricsGrid.innerHTML = `
-        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Mês Ativo</div>
-          <div style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; margin-top: 0.2rem;">${MONTH_NAMES[this.currentMonth - 1]}</div>
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #0369a1; text-transform: uppercase; font-weight: 700;">Mês Ativo</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #0284c7; margin-top: 0.2rem;">${MONTH_NAMES[this.currentMonth - 1]}</div>
         </div>
-        <div style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Plantões FDS</div>
-          <div style="font-size: 1.1rem; font-weight: 800; color: #f43f5e; margin-top: 0.2rem;">${totalWeekendsAll} plantões</div>
+        <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #be123c; text-transform: uppercase; font-weight: 700;">Plantões FDS</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #e11d48; margin-top: 0.2rem;">${totalWeekendsAll} plantões</div>
         </div>
-        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Folgas Sexta</div>
-          <div style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">${totalFridayOffsAll} folgas</div>
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #047857; text-transform: uppercase; font-weight: 700;">Folgas Sexta</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #059669; margin-top: 0.2rem;">${totalFridayOffsAll} folgas</div>
         </div>
-        <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Equipe L2</div>
-          <div style="font-size: 1.1rem; font-weight: 800; color: #a78bfa; margin-top: 0.2rem;">${employees.length} membros</div>
+        <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #6d28d9; text-transform: uppercase; font-weight: 700;">Equipe L2</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #7c3aed; margin-top: 0.2rem;">${employees.length} membros</div>
         </div>
       `;
-    }
-
-    // Render Visual Progress Bars Chart
-    const barsContainer = document.getElementById('weekend-report-bars-container');
-    if (barsContainer) {
-      barsContainer.innerHTML = '';
-      let maxWeekends = 1;
-      Object.values(stats).forEach(st => {
-        if (st.weekendsTotal > maxWeekends) maxWeekends = st.weekendsTotal;
-      });
-
-      // Checa equilíbrio entre balconistas (não plantonistas)
-      const balconistasTotals = Object.values(stats)
-        .filter(st => st.emp.prefShift !== 'PLANTONISTA')
-        .map(st => st.weekendsTotal);
-      const minB = balconistasTotals.length > 0 ? Math.min(...balconistasTotals) : 0;
-      const maxB = balconistasTotals.length > 0 ? Math.max(...balconistasTotals) : 0;
-      const isBalanced = (maxB - minB) <= 1;
-
-      const balanceBadge = document.getElementById('weekend-balance-badge');
-      if (balanceBadge) {
-        if (isBalanced) {
-          balanceBadge.style.background = 'rgba(16, 185, 129, 0.15)';
-          balanceBadge.style.color = '#10b981';
-          balanceBadge.innerHTML = '<i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> Distribuição Equilibrada';
-        } else {
-          balanceBadge.style.background = 'rgba(245, 158, 11, 0.15)';
-          balanceBadge.style.color = '#f59e0b';
-          balanceBadge.innerHTML = '<i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Ajuste Sugerido';
-        }
-      }
-
-      Object.values(stats).forEach(st => {
-        const emp = st.emp;
-        const color = emp.color || '#38bdf8';
-        const barPercent = Math.round((st.weekendsTotal / maxWeekends) * 100);
-        const satWidth = st.weekendsTotal > 0 ? Math.round((st.saturdays / st.weekendsTotal) * barPercent) : 0;
-        const sunWidth = st.weekendsTotal > 0 ? (barPercent - satWidth) : 0;
-
-        const barRow = document.createElement('div');
-        barRow.style.display = 'flex';
-        barRow.style.flexDirection = 'column';
-        barRow.style.gap = '0.3rem';
-        barRow.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
-            <div style="display: flex; align-items: center; gap: 0.45rem;">
-              <span style="width: 9px; height: 9px; border-radius: 50%; background: ${color}; display: inline-block;"></span>
-              <strong style="color: #f8fafc; font-size: 0.82rem;">${emp.name}</strong>
-              <span style="font-size: 0.7rem; color: #94a3b8;">${emp.role || ''}</span>
-            </div>
-            <div style="font-weight: 700; color: #38bdf8; font-size: 0.78rem;">
-              ${st.weekendsTotal} plantões <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">(${st.saturdays} Sáb / ${st.sundays} Dom)</span>
-            </div>
-          </div>
-          <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; display: flex;">
-            <div style="width: ${satWidth}%; background: #f43f5e; transition: width 0.4s ease;" title="Sábados: ${st.saturdays}"></div>
-            <div style="width: ${sunWidth}%; background: #e11d48; transition: width 0.4s ease;" title="Domingos: ${st.sundays}"></div>
-          </div>
-        `;
-        barsContainer.appendChild(barRow);
-      });
     }
 
     // Render Table
@@ -427,27 +366,27 @@ class CalendarManager {
       tbody.innerHTML = '';
       Object.values(stats).forEach(st => {
         const emp = st.emp;
-        const color = emp.color || '#38bdf8';
+        const color = emp.color || '#0284c7';
         const isPlantonista = emp.prefShift === 'PLANTONISTA';
-        const roleBadge = isPlantonista ? '<span style="font-size: 0.68rem; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Plantonista</span>' : '<span style="font-size: 0.68rem; background: rgba(255,255,255,0.06); color: #94a3b8; padding: 2px 6px; border-radius: 4px;">Balconista</span>';
+        const roleBadge = isPlantonista ? '<span style="font-size: 0.68rem; background: #ffedd5; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Plantonista</span>' : '<span style="font-size: 0.68rem; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Balconista</span>';
 
         const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+        tr.style.borderBottom = '1px solid #e2e8f0';
         tr.innerHTML = `
-          <td style="padding: 0.65rem 0.8rem;">
+          <td style="padding: 0.65rem 0.85rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; display: inline-block;"></span>
               <div>
-                <strong style="color: #f8fafc; font-size: 0.85rem;">${emp.name}</strong>
+                <strong style="color: #0f172a; font-size: 0.85rem;">${emp.name}</strong>
                 <div style="margin-top: 2px;">${roleBadge}</div>
               </div>
             </div>
           </td>
-          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #f43f5e;">${st.saturdays}</td>
-          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #f43f5e;">${st.sundays}</td>
-          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 800; color: #f8fafc; background: rgba(244, 63, 94, 0.05);">${st.weekendsTotal}</td>
-          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.05);">${st.fridayOffs}</td>
-          <td style="padding: 0.65rem 0.8rem; text-align: center; font-weight: 800; color: #38bdf8;">${st.totalDaysWorked} dias</td>
+          <td style="padding: 0.65rem 0.65rem; text-align: center; font-weight: 700; color: #e11d48;">${st.saturdays}</td>
+          <td style="padding: 0.65rem 0.65rem; text-align: center; font-weight: 700; color: #be123c;">${st.sundays}</td>
+          <td style="padding: 0.65rem 0.65rem; text-align: center; font-weight: 800; color: #0f172a; background: #fff1f2;">${st.weekendsTotal}</td>
+          <td style="padding: 0.65rem 0.65rem; text-align: center; font-weight: 800; color: #059669; background: #ecfdf5;">${st.fridayOffs}</td>
+          <td style="padding: 0.65rem 0.85rem; text-align: center; font-weight: 800; color: #0284c7; background: #f0f9ff;">${st.totalDaysWorked} dias</td>
         `;
         tbody.appendChild(tr);
       });
