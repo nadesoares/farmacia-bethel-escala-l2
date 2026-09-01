@@ -563,10 +563,13 @@
               </label>
             </div>
             <div style="margin-top: 0.2rem;">
-              <label style="font-size: 0.76rem; color: #334155; font-weight: 600; display: block; margin-bottom: 0.25rem;">Turno do Plantão:</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <label style="font-size: 0.76rem; color: #334155; font-weight: 600;">Turno Fixo do Plantão:</label>
+                <span id="plantao-shift-badge" style="font-size: 0.68rem; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 2px 6px; border-radius: 4px; font-weight: 700;">🔒 Fixo no 2º Turno (Slot 2)</span>
+              </div>
               <select id="plantao-shift-select" class="select-input-modern" style="height: 36px; color: #0f172a; font-weight: 600;">
+                <option value="2" selected>2º Turno (Intermediário / Meio - 07:00-11:00 / 16:00-20:00)</option>
                 <option value="1">1º Turno (Manhã)</option>
-                <option value="2">2º Turno (Alternado)</option>
                 <option value="3">3º Turno (Noite)</option>
                 <option value="ALL">Turno Aberto / Qualquer</option>
               </select>
@@ -3856,8 +3859,13 @@ class EmployeeManager {
     prefShiftSelect?.addEventListener('change', (e) => {
       const plantonistaContainer = document.getElementById('plantonista-options-container');
       if (plantonistaContainer) {
-        if (e.target.value === 'PLANTONISTA') plantonistaContainer.classList.remove('hidden');
-        else plantonistaContainer.classList.add('hidden');
+        if (e.target.value === 'PLANTONISTA') {
+          plantonistaContainer.classList.remove('hidden');
+          const shiftSelect = document.getElementById('plantao-shift-select');
+          if (shiftSelect) shiftSelect.value = '2';
+        } else {
+          plantonistaContainer.classList.add('hidden');
+        }
       }
     });
   }
@@ -3875,7 +3883,7 @@ class EmployeeManager {
     document.getElementById('plantao-day-fri').checked = false;
     document.getElementById('plantao-day-sat').checked = true;
     document.getElementById('plantao-day-sun').checked = false;
-    document.getElementById('plantao-shift-select').value = '1';
+    document.getElementById('plantao-shift-select').value = '2';
 
     window.app?.openModal('modal-employee');
   }
@@ -3896,7 +3904,7 @@ class EmployeeManager {
       document.getElementById('plantao-day-fri').checked = days.includes('FRI');
       document.getElementById('plantao-day-sat').checked = days.includes('SAT');
       document.getElementById('plantao-day-sun').checked = days.includes('SUN');
-      document.getElementById('plantao-shift-select').value = emp.onCallShift || '1';
+      document.getElementById('plantao-shift-select').value = emp.onCallShift || emp.plantaoShift || '2';
     } else {
       plantonistaContainer?.classList.add('hidden');
     }
@@ -3917,12 +3925,12 @@ class EmployeeManager {
     }
 
     const onCallDays = [];
-    let onCallShift = '1';
+    let onCallShift = '2';
     if (prefShift === 'PLANTONISTA') {
       if (document.getElementById('plantao-day-fri')?.checked) onCallDays.push('FRI');
       if (document.getElementById('plantao-day-sat')?.checked) onCallDays.push('SAT');
       if (document.getElementById('plantao-day-sun')?.checked) onCallDays.push('SUN');
-      onCallShift = document.getElementById('plantao-shift-select')?.value || '1';
+      onCallShift = document.getElementById('plantao-shift-select')?.value || '2';
     }
 
     const employeeData = {

@@ -74,23 +74,19 @@ class PharmacyScheduler {
     // - 4 colaboradores em 4 semanas: todas as 4 semanas (índices 0, 1, 2, 3).
     // - 4 colaboradores em 5 semanas: semanas 2, 3, 4 e 5 (índices 1, 2, 3, 4) -> 1ª semana sem folga.
     // - 5 ou 6 colaboradores: 1ª semana sem folga verde (maior movimento de início de mês), folgas nas semanas 2, 3, 4 (e 5).
+    // Define as sextas-feiras candidatas para receber folga verde
+    // REGRA AUTÔNOMA L2:
+    // Se numFridays === numEmps (ex: 4 sextas para 4 balconistas):
+    //   Todas as sextas recebem 1 folga (índices [0, 1, 2, 3]).
+    // Se numFridays > numEmps (ex: 5 sextas para 4 balconistas, ou 4 sextas para 3 balconistas):
+    //   A 1ª sexta é priorizada a NÃO dar folga (início de mês/pico), folgas distribuídas a partir da 2ª semana (índices [1, 2, 3, ...]).
     let candidateFridayIndices = [];
-    if (numFridays === 4) {
-      if (numEmps === 2) candidateFridayIndices = [1, 2];
-      else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
-      else if (numEmps === 4) candidateFridayIndices = [0, 1, 2, 3];
-      else candidateFridayIndices = [1, 2, 3]; // 5 ou 6 colaboradores em 4 semanas: 1ª semana livre
-    } else if (numFridays === 5) {
-      if (numEmps === 2) candidateFridayIndices = [1, 2];
-      else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
-      else if (numEmps === 4) candidateFridayIndices = [1, 2, 3, 4];
-      else candidateFridayIndices = [1, 2, 3, 4]; // 5 ou 6 colaboradores em 5 semanas: 1ª semana livre
+    if (numFridays === numEmps) {
+      candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
+    } else if (numFridays > numEmps) {
+      candidateFridayIndices = Array.from({ length: Math.min(numEmps, numFridays - 1) }, (_, i) => i + 1);
     } else {
-      if (numEmps >= numFridays) {
-        candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
-      } else {
-        candidateFridayIndices = Array.from({ length: Math.min(numEmps, numFridays - 1) }, (_, i) => i + 1);
-      }
+      candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
     }
 
     // Âncora perpétua: Segunda-feira 03/08/2026 (Início da escala base)

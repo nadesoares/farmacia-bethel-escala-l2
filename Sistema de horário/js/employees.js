@@ -81,7 +81,7 @@ class EmployeeManager {
     document.getElementById('plantao-day-fri').checked = false;
     document.getElementById('plantao-day-sat').checked = true;
     document.getElementById('plantao-day-sun').checked = false;
-    document.getElementById('plantao-shift-select').value = '1';
+    document.getElementById('plantao-shift-select').value = '2';
 
     window.app?.openModal('modal-employee');
   }
@@ -102,7 +102,7 @@ class EmployeeManager {
       document.getElementById('plantao-day-fri').checked = days.includes('FRI');
       document.getElementById('plantao-day-sat').checked = days.includes('SAT');
       document.getElementById('plantao-day-sun').checked = days.includes('SUN');
-      document.getElementById('plantao-shift-select').value = emp.onCallShift || '1';
+      document.getElementById('plantao-shift-select').value = emp.onCallShift || emp.plantaoShift || '2';
     } else {
       plantonistaContainer?.classList.add('hidden');
     }
@@ -123,13 +123,13 @@ class EmployeeManager {
     }
 
     const onCallDays = [];
-    let onCallShift = '1';
+    let onCallShift = '2';
 
     if (prefShift === 'PLANTONISTA') {
       if (document.getElementById('plantao-day-fri')?.checked) onCallDays.push('FRI');
       if (document.getElementById('plantao-day-sat')?.checked) onCallDays.push('SAT');
       if (document.getElementById('plantao-day-sun')?.checked) onCallDays.push('SUN');
-      onCallShift = document.getElementById('plantao-shift-select')?.value || '1';
+      onCallShift = document.getElementById('plantao-shift-select')?.value || '2';
     }
 
     const employeeData = {
