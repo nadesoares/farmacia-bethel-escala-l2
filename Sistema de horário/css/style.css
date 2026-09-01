@@ -1696,3 +1696,33 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
   border-radius: var(--radius-xs);
   padding: 0.45rem 0.75rem;
 }
+
+/* Relatório de Fins de Semana & Folgas */
+#weekend-report-table th,
+#weekend-report-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media print {
+  body:has(#modal-weekend-report:not(.hidden)) #modal-weekend-report {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  body:has(#modal-weekend-report:not(.hidden)) .modal-box {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  body:has(#modal-weekend-report:not(.hidden)) .modal-footer,
+  body:has(#modal-weekend-report:not(.hidden)) .btn-close-modal,
+  body:has(#modal-weekend-report:not(.hidden)) .app-topbar,
+  body:has(#modal-weekend-report:not(.hidden)) .app-main {
+    display: none !important;
+  }
+}
+

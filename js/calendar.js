@@ -126,6 +126,17 @@ class CalendarManager {
       this.highlightEmployee(e.target.value);
     });
 
+    // Botão Relatório de Fins de Semana e Folgas
+    document.getElementById('btn-open-weekend-report')?.addEventListener('click', () => {
+      this.openWeekendReport();
+    });
+    document.getElementById('btn-dropdown-weekend-report')?.addEventListener('click', () => {
+      this.openWeekendReport();
+    });
+    document.getElementById('btn-print-weekend-report')?.addEventListener('click', () => {
+      window.print();
+    });
+
     document.getElementById('btn-auto-generate')?.addEventListener('click', () => {
       this.openMonthTeamModal();
     });
@@ -250,6 +261,139 @@ class CalendarManager {
     } catch (err) {
       window.app?.showToast(err.message || 'Erro ao gerar escala', 'error');
     }
+  }
+
+  openWeekendReport() {
+    const yearMonthKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+    const schedule = this.store.getMonthSchedule(yearMonthKey) || this.store.getSchedule(yearMonthKey);
+    const employees = this.store.getActiveEmployees();
+    const monthLabel = `${MONTH_NAMES[this.currentMonth - 1]} de ${this.currentYear}`;
+
+    const titleEl = document.getElementById('weekend-report-modal-title');
+    const subtitleEl = document.getElementById('weekend-report-modal-subtitle');
+    if (titleEl) titleEl.textContent = `Relatório de Fins de Semana & Folgas - ${monthLabel}`;
+    if (subtitleEl) subtitleEl.textContent = `Balanço analítico de plantões e folgas de ${monthLabel}`;
+
+    const stats = {};
+    employees.forEach(emp => {
+      const cleanName = (emp.name || '').trim().toUpperCase();
+      stats[cleanName] = {
+        emp: emp,
+        saturdays: 0,
+        sundays: 0,
+        weekendsTotal: 0,
+        fridayOffs: 0,
+        totalDaysWorked: 0
+      };
+    });
+
+    if (schedule && schedule.days) {
+      for (const dateKey in schedule.days) {
+        const day = schedule.days[dateKey];
+        const dayOfWeek = day.dayOfWeek; // 0=Dom, 6=Sáb, 5=Sex
+        const workersInDay = new Set();
+        const fridayOffWorkers = new Set();
+
+        if (day.slots) {
+          day.slots.forEach(slot => {
+            if (slot.workers) {
+              slot.workers.forEach(w => {
+                const name = (w.employeeName || '').trim().toUpperCase();
+                if (stats[name]) {
+                  if (w.color === 'GREEN') {
+                    if (dayOfWeek === 5) {
+                      fridayOffWorkers.add(name);
+                    }
+                  } else {
+                    workersInDay.add(name);
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        workersInDay.forEach(name => {
+          stats[name].totalDaysWorked++;
+          if (dayOfWeek === 6) {
+            stats[name].saturdays++;
+            stats[name].weekendsTotal++;
+          } else if (dayOfWeek === 0) {
+            stats[name].sundays++;
+            stats[name].weekendsTotal++;
+          }
+        });
+
+        fridayOffWorkers.forEach(name => {
+          stats[name].fridayOffs++;
+        });
+      }
+    }
+
+    // Render Metrics Cards
+    const metricsGrid = document.getElementById('weekend-report-metrics-grid');
+    if (metricsGrid) {
+      let totalWeekendsAll = 0;
+      let totalFridayOffsAll = 0;
+      Object.values(stats).forEach(s => {
+        totalWeekendsAll += s.weekendsTotal;
+        totalFridayOffsAll += s.fridayOffs;
+      });
+
+      metricsGrid.innerHTML = `
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Mês Ativo</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; margin-top: 0.2rem;">${MONTH_NAMES[this.currentMonth - 1]}</div>
+        </div>
+        <div style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Plantões FDS</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #f43f5e; margin-top: 0.2rem;">${totalWeekendsAll} plantões</div>
+        </div>
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Folgas Sexta</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">${totalFridayOffsAll} folgas</div>
+        </div>
+        <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 8px; padding: 0.75rem; text-align: center;">
+          <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Equipe L2</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #a78bfa; margin-top: 0.2rem;">${employees.length} membros</div>
+        </div>
+      `;
+    }
+
+    // Render Table
+    const tbody = document.getElementById('weekend-report-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      Object.values(stats).forEach(st => {
+        const emp = st.emp;
+        const color = emp.color || '#38bdf8';
+        const isPlantonista = emp.prefShift === 'PLANTONISTA';
+        const roleBadge = isPlantonista ? '<span style="font-size: 0.68rem; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Plantonista</span>' : '<span style="font-size: 0.68rem; background: rgba(255,255,255,0.06); color: #94a3b8; padding: 2px 6px; border-radius: 4px;">Balconista</span>';
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+        tr.innerHTML = `
+          <td style="padding: 0.65rem 0.8rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; display: inline-block;"></span>
+              <div>
+                <strong style="color: #f8fafc; font-size: 0.85rem;">${emp.name}</strong>
+                <div style="margin-top: 2px;">${roleBadge}</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #f43f5e;">${st.saturdays}</td>
+          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #f43f5e;">${st.sundays}</td>
+          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 800; color: #f8fafc; background: rgba(244, 63, 94, 0.05);">${st.weekendsTotal}</td>
+          <td style="padding: 0.65rem 0.6rem; text-align: center; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.05);">${st.fridayOffs}</td>
+          <td style="padding: 0.65rem 0.8rem; text-align: center; font-weight: 800; color: #38bdf8;">${st.totalDaysWorked} dias</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.app?.openModal('modal-weekend-report');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   getEmptyMonthSchedule(year, month) {
