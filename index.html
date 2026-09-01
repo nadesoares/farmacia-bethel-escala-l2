@@ -660,6 +660,45 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EQUIPE DO MÊS / GERAR ESCALA -->
+  <div id="modal-month-team" class="modal-overlay hidden" data-no-backdrop-close="true">
+    <div class="modal-box modern-modal" style="max-width: 580px; width: 95%;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i data-lucide="users"></i>
+          </div>
+          <div>
+            <h3 id="month-team-modal-title">Equipe do Mês</h3>
+            <span class="text-xs text-muted">Marque quem vai trabalhar na escala deste mês e clique em 'Gerar Escala'</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" data-modal="modal-month-team"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border-app);">
+          <span id="month-team-count-badge" style="font-size: 0.82rem; font-weight: 700; color: #38bdf8;">0 colaboradores selecionados</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-sm btn-ghost" id="btn-select-all-month-team" style="font-size: 0.76rem; font-weight: 700;">Marcar Todos</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="btn-unselect-all-month-team" style="font-size: 0.76rem; font-weight: 700; color: #f43f5e;">Desmarcar Todos</button>
+          </div>
+        </div>
+        <div id="month-team-checklist-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button type="button" class="btn btn-ghost" data-modal="modal-month-team">Cancelar</button>
+        <button type="button" class="btn btn-emerald" id="btn-save-month-team">
+          <i data-lucide="sparkles"></i> Gerar Escala
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: RELATÓRIO DE FINS DE SEMANA E FOLGAS -->
   <div id="modal-weekend-report" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 680px; width: 95%;">
