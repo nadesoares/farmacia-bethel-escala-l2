@@ -177,9 +177,13 @@ class Store {
       existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();
       schedulesModified = true;
     }
-    if (!existingSchedules['2026-08']) {
-      existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
-      schedulesModified = true;
+    // Se a escala de 2026-08 existir mas estiver vazia (0 pessoas escaladas), remove para gerar dinamicamente
+    if (existingSchedules['2026-08'] && existingSchedules['2026-08'].days) {
+      const hasAnyWorkers = Object.values(existingSchedules['2026-08'].days).some(d => d.slots?.some(s => s.workers?.length > 0));
+      if (!hasAnyWorkers) {
+        delete existingSchedules['2026-08'];
+        schedulesModified = true;
+      }
     }
     if (schedulesModified) {
       localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));

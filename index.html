@@ -1143,9 +1143,13 @@ class Store {
       existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();
       schedulesModified = true;
     }
-    if (!existingSchedules['2026-08']) {
-      existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
-      schedulesModified = true;
+    // Se a escala de 2026-08 existir mas estiver vazia (0 pessoas escaladas), remove para gerar dinamicamente
+    if (existingSchedules['2026-08'] && existingSchedules['2026-08'].days) {
+      const hasAnyWorkers = Object.values(existingSchedules['2026-08'].days).some(d => d.slots?.some(s => s.workers?.length > 0));
+      if (!hasAnyWorkers) {
+        delete existingSchedules['2026-08'];
+        schedulesModified = true;
+      }
     }
     if (schedulesModified) {
       localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
@@ -1391,13 +1395,6 @@ class PharmacyScheduler {
   }
 
   generateMonthSchedule(year, month) {
-    if (year === 2026 && month === 9) {
-      return this.store.getDefaultSeptember2026Schedule();
-    }
-    if (year === 2026 && month === 8) {
-      return this.store.getDefaultAugust2026Schedule();
-    }
-
     const yearMonthKey = `${year}-${String(month).padStart(2, '0')}`;
     const rawActiveEmployees = this.store.getMonthEmployees(yearMonthKey);
     const selectedEmployeeIds = this.store.getMonthSelectedEmployeeIds(yearMonthKey);
@@ -1417,7 +1414,19 @@ class PharmacyScheduler {
     const activeEmployees = Array.from(uniqueEmployeesMap.values());
     const fullTimeEmps = activeEmployees.filter(e => e.prefShift !== 'PLANTONISTA');
     const plantonistas = activeEmployees.filter(e => e.prefShift === 'PLANTONISTA');
-    const empsList = fullTimeEmps.length > 0 ? fullTimeEmps : activeEmployees;
+    let empsList = fullTimeEmps.length > 0 ? fullTimeEmps : activeEmployees;
+
+    // Pareamento L2 de Novato + Experiente quando há 4 balconistas
+    if (empsList.length === 4) {
+      const novatos = empsList.filter(e => {
+        const n = (e.name || '').toUpperCase();
+        return n.includes('LIVIA') || n.includes('LÍVIA') || n.includes('MATHEUS');
+      });
+      const experientes = empsList.filter(e => !novatos.includes(e));
+      if (novatos.length === 2 && experientes.length === 2) {
+        empsList = [novatos[0], experientes[0], novatos[1], experientes[1]];
+      }
+    }
     const numEmps = empsList.length;
 
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -1749,16 +1758,24 @@ class PharmacyScheduler {
           t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
 
         } else if (dayOfWeek === 5) {
-          const t1Group = isEvenWeek ? groupB : groupA;
-          const t3Group = isEvenWeek ? groupA : groupB;
+          const t1Group = isEvenWeek ? groupA : groupB;
+          const t3Group = isEvenWeek ? groupB : groupA;
 
           t1Group.forEach(e => {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
-            slots[0].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+            if (isGreen) {
+              slots[1].push({ employeeName: e.name, color: 'GREEN' });
+            } else {
+              slots[0].push({ employeeName: e.name, color: 'NORMAL' });
+            }
           });
           t3Group.forEach(e => {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
-            slots[2].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
+            if (isGreen) {
+              slots[1].push({ employeeName: e.name, color: 'GREEN' });
+            } else {
+              slots[2].push({ employeeName: e.name, color: 'NORMAL' });
+            }
           });
 
         } else if (dayOfWeek === 6) {
