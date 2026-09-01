@@ -365,8 +365,26 @@ class PharmacyScheduler {
         // ==========================================
         // --- CASO 4 FUNCIONÁRIOS (2 NO T1, 2 NO T3, T2 VAZIO) ---
         // ==========================================
-        const groupA = [empsList[0], empsList[1]];
-        const groupB = [empsList[2], empsList[3]];
+        const novatos = empsList.filter(e => {
+          const n = (e.name || '').toUpperCase();
+          return n.includes('LIVIA') || n.includes('LÍVIA') || n.includes('MATHEUS');
+        });
+        const experientes = empsList.filter(e => !novatos.includes(e));
+
+        let groupA, groupB;
+        const pairCycle = Math.floor(globalWeekIdx / 2) % 2;
+        if (novatos.length === 2 && experientes.length >= 2) {
+          if (pairCycle === 0) {
+            groupA = [novatos[0], experientes[0]]; // Lívia + Natália
+            groupB = [novatos[1], experientes[1]]; // Matheus + Salete
+          } else {
+            groupA = [novatos[0], experientes[1]]; // Lívia + Salete
+            groupB = [novatos[1], experientes[0]]; // Matheus + Natália
+          }
+        } else {
+          groupA = [empsList[0], empsList[1]];
+          groupB = [empsList[2], empsList[3]];
+        }
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
           const t1Group = isEvenWeek ? groupA : groupB;
