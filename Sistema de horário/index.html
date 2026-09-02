@@ -2520,7 +2520,7 @@ class CalendarManager {
       return '<p style="color: #64748b; margin: 0.5rem 0; font-style: italic;">Nenhum horário registrado para esta data.</p>';
     }
 
-    const shiftNames = ['1º Turno (07:00 às 15:20)', '2º Turno (Intermediário)', '3º Turno (14:40 às 23:00)'];
+    const shiftNames = ['1º Turno (Manhã)', '2º Turno (Intermediário)', '3º Turno (Noite)'];
     let html = '';
 
     dayData.slots.forEach((slot, sIdx) => {
@@ -2574,7 +2574,7 @@ class CalendarManager {
     } else {
       l1Html = `
         <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (07:00 às 15:20):</strong>
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (Manhã):</strong>
           <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
         </div>
         <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
@@ -2582,7 +2582,7 @@ class CalendarManager {
           <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
         </div>
         <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (14:40 às 23:00):</strong>
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
           <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
         </div>
       `;
