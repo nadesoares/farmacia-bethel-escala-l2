@@ -105,6 +105,16 @@ class App {
       if (window.lucide) {
         window.lucide.createIcons();
       }
+
+      if (modalId === 'modal-admin-login') {
+        setTimeout(() => {
+          const pin = document.getElementById('admin-pin');
+          if (pin) {
+            pin.focus();
+            pin.select();
+          }
+        }, 60);
+      }
     }
   }
 
@@ -129,6 +139,7 @@ class App {
   bindAdminAuth() {
     const btnToggleAdmin = document.getElementById('btn-toggle-admin');
     const formLogin = document.getElementById('form-admin-login');
+    const pinInput = document.getElementById('admin-pin');
 
     if (btnToggleAdmin) {
       btnToggleAdmin.addEventListener('click', () => {
@@ -137,7 +148,6 @@ class App {
           this.updateAdminUI();
           this.showToast('Saiu do Modo Admin.', 'info');
         } else {
-          const pinInput = document.getElementById('admin-pin');
           if (pinInput) pinInput.value = '';
           const errBox = document.getElementById('admin-login-error');
           if (errBox) errBox.classList.add('hidden');
@@ -146,10 +156,20 @@ class App {
       });
     }
 
+    if (pinInput) {
+      pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (formLogin) {
+            formLogin.dispatchEvent(new Event('submit', { cancelable: true }));
+          }
+        }
+      });
+    }
+
     if (formLogin) {
       formLogin.addEventListener('submit', (e) => {
         e.preventDefault();
-        const pinInput = document.getElementById('admin-pin');
         const pin = pinInput ? pinInput.value : '';
         if (this.store.loginAdmin(pin)) {
           this.closeModal('modal-admin-login');
@@ -158,6 +178,10 @@ class App {
         } else {
           const errBox = document.getElementById('admin-login-error');
           if (errBox) errBox.classList.remove('hidden');
+          if (pinInput) {
+            pinInput.focus();
+            pinInput.select();
+          }
         }
       });
     }

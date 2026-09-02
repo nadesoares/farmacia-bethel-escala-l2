@@ -1559,6 +1559,17 @@ class CalendarManager {
     return `Esta ação está cadastrada ${periodText}.`;
   }
 
+  isCampaignActiveInMonth(camp, year, month) {
+    if (!camp) return false;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const matches = this.getCampaignStatusForDate(dateKey, [camp]);
+      if (matches && matches.length > 0) return true;
+    }
+    return false;
+  }
+
   openPublicCampaignsModal() {
     this.renderPublicCampaignsList();
     const btnAdminCamp = document.getElementById('btn-open-admin-campaigns');
@@ -1570,15 +1581,68 @@ class CalendarManager {
 
   renderPublicCampaignsList() {
     const container = document.getElementById('public-campaigns-list-container');
+    const badgeBanner = document.getElementById('public-campaigns-mode-badge');
     if (!container) return;
     container.innerHTML = '';
 
-    const campaigns = this.store.getCampaigns();
+    const isAdmin = this.store.isAdmin();
+    const allCampaigns = this.store.getCampaigns() || [];
+    
+    // No modo público, mostra apenas as ações ativas no mês selecionado. No Admin, mostra todas.
+    const campaigns = isAdmin 
+      ? allCampaigns 
+      : allCampaigns.filter(c => this.isCampaignActiveInMonth(c, this.currentYear, this.currentMonth));
+
+    const monthName = MONTH_NAMES[this.currentMonth - 1] || 'Mês';
+    const activeMonthLabel = `${monthName}/${this.currentYear}`;
+
+    if (badgeBanner) {
+      if (isAdmin) {
+        badgeBanner.style.background = '#fef3c7';
+        badgeBanner.style.border = '1px solid #fde68a';
+        badgeBanner.style.color = '#92400e';
+        badgeBanner.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.45rem;">
+            <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #b45309; flex-shrink: 0;"></i>
+            <span>Modo Admin: <strong>Exibindo todas as campanhas cadastradas</strong></span>
+          </div>
+          <span style="font-size: 0.7rem; background: #fde68a; color: #78350f; padding: 2px 8px; border-radius: 12px; font-weight: 800; flex-shrink: 0;">
+            ${campaigns.length} ${campaigns.length === 1 ? 'campanha' : 'campanhas'}
+          </span>
+        `;
+      } else {
+        badgeBanner.style.background = '#f0fdf4';
+        badgeBanner.style.border = '1px solid #bbf7d0';
+        badgeBanner.style.color = '#15803d';
+        badgeBanner.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.45rem;">
+            <i data-lucide="calendar-check" style="width: 16px; height: 16px; color: #16a34a; flex-shrink: 0;"></i>
+            <span>Ações ativas em <strong>${monthName} de ${this.currentYear}</strong></span>
+          </div>
+          <span style="font-size: 0.7rem; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-weight: 800; flex-shrink: 0;">
+            ${campaigns.length} ${campaigns.length === 1 ? 'ação ativa' : 'ações ativas'}
+          </span>
+        `;
+      }
+    }
+
+    const titleSubtitleEl = document.getElementById('public-campaigns-subtitle');
+    if (titleSubtitleEl) {
+      if (isAdmin) {
+        titleSubtitleEl.textContent = 'Gerenciamento global de campanhas e ações promocionais';
+      } else {
+        titleSubtitleEl.textContent = `Consulte as promoções e ações programadas para ${activeMonthLabel}`;
+      }
+    }
+
     if (!campaigns || campaigns.length === 0) {
+      const msg = isAdmin 
+        ? 'Nenhuma ação ou campanha cadastrada no momento.' 
+        : `Nenhuma ação ou campanha ativa programada para ${activeMonthLabel}.`;
       container.innerHTML = `
         <div style="text-align: center; padding: 2rem 1rem; color: #64748b;">
           <i data-lucide="target" style="width: 36px; height: 36px; opacity: 0.4; margin-bottom: 0.5rem;"></i>
-          <p style="margin: 0; font-size: 0.9rem; font-weight: 600;">Nenhuma ação ou campanha cadastrada no momento.</p>
+          <p style="margin: 0; font-size: 0.9rem; font-weight: 600;">${msg}</p>
         </div>
       `;
       if (window.lucide) window.lucide.createIcons();
@@ -1587,6 +1651,11 @@ class CalendarManager {
 
     campaigns.forEach(c => {
       const detailText = this.formatCampaignDetailText(c);
+      const isCurrentMonthActive = this.isCampaignActiveInMonth(c, this.currentYear, this.currentMonth);
+      const badgeHtml = isCurrentMonthActive 
+        ? '<span style="font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(234, 179, 8, 0.15); color: #b45309;">Ativa neste mês</span>'
+        : '<span style="font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 12px; background: #f1f5f9; color: #64748b;">Outros meses</span>';
+
       const itemEl = document.createElement('div');
       itemEl.style.cssText = 'display: flex; gap: 0.85rem; padding: 0.85rem 1rem; background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: flex-start;';
 
@@ -1595,7 +1664,7 @@ class CalendarManager {
         <div style="flex: 1;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
             <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">${c.title}</h4>
-            <span style="font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(234, 179, 8, 0.12); color: #b45309;">Ativa</span>
+            ${badgeHtml}
           </div>
           <p style="margin: 0.35rem 0 0 0; font-size: 0.83rem; color: #475569; font-weight: 500; line-height: 1.4;">
             ${detailText}
