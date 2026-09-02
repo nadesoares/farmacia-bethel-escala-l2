@@ -464,12 +464,12 @@ class CalendarManager {
         const chips = workers.map(w => {
           const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
           return `<span class="worker-chip ${colorClass}" style="font-size: 0.76rem; padding: 2px 7px;">${w.employeeName}</span>`;
-        }).join(' ');
+        }).join('<span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>');
 
         html += `
           <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
             <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">${shiftTitle}:</strong>
-            <div style="display: flex; flex-wrap: wrap; gap: 4px;">${chips}</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">${chips}</div>
           </div>
         `;
       }
