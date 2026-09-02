@@ -2575,6 +2575,7 @@ class CalendarManager {
       const shiftTitle = shiftNames[sIdx] || `Turno ${sIdx + 1}`;
 
       if (workers.length === 0) {
+        if (sIdx === 1) return; // Omitir 2º Turno quando vazio
         html += `
           <div style="background: rgba(0,0,0,0.02); padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px dashed #cbd5e1;">
             <strong style="font-size: 0.76rem; color: #64748b;">${shiftTitle}:</strong>
@@ -2625,12 +2626,12 @@ class CalendarManager {
           <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
         </div>
         <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">2º Turno (Intermediário):</strong>
-          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
-        </div>
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
           <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
-          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+            <span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>
+            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
+          </div>
         </div>
       `;
     }
@@ -2655,14 +2656,20 @@ class CalendarManager {
     if (dayData && dayData.slots) {
       const shiftLabels = ['1º Turno (Manhã)', '2º Turno (Intermediário)', '3º Turno (Noite)'];
       dayData.slots.forEach((s, idx) => {
-        const names = (s.workers || []).map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(', ');
-        l2Text += `  • *${shiftLabels[idx]}*: ${names || 'Sem escala'}\n`;
+        const workers = s.workers || [];
+        if (workers.length === 0) {
+          if (idx === 1) return; // Omitir 2º turno vazio no WhatsApp
+          l2Text += `  • *${shiftLabels[idx]}*: Sem escala\n`;
+        } else {
+          const names = workers.map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(' / ');
+          l2Text += `  • *${shiftLabels[idx]}*: ${names}\n`;
+        }
       });
     } else {
       l2Text = '  • Escala em aberto\n';
     }
 
-    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Intermediário*: MAURÍCIO\n  • *Noite*: DJANE\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
+    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
