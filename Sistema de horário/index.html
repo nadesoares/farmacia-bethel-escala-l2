@@ -1016,7 +1016,7 @@ window.supabaseManager = new SupabaseManager();
  */
 const STORAGE_KEYS = {
   EMPLOYEES: 'farmacia_escala_employees_v3',
-  SCHEDULES: 'farmacia_escala_schedules_v17',
+  SCHEDULES: 'farmacia_escala_schedules_v18',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
   ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
@@ -1182,6 +1182,58 @@ class Store {
     };
   }
 
+  getDefaultOctober2026Schedule() {
+    const days = {
+      // Semana 1 (01 a 04/10) - Continuação da Semana 5 de Setembro (Ciclo A): Manhã (Matheus + Salete) / Noite (Livia + Natália) - 1ª Sexta (Folga Verde Livia)
+      "2026-10-01": { dayNumber: 1, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-02": { dayNumber: 2, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-03": { dayNumber: 3, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-10-04": { dayNumber: 4, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 2 (05 a 11/10) - Ciclo B: Manhã (Livia + Salete) / Noite (Matheus + Natália) - 2ª Sexta (Folga Verde Matheus)
+      "2026-10-05": { dayNumber: 5, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-06": { dayNumber: 6, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-07": { dayNumber: 7, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-08": { dayNumber: 8, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-09": { dayNumber: 9, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-10": { dayNumber: 10, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-10-11": { dayNumber: 11, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 3 (12 a 18/10) - Ciclo B (Inversão): Manhã (Matheus + Natália) / Noite (Livia + Salete) - 3ª Sexta (Folga Verde Salete)
+      "2026-10-12": { dayNumber: 12, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-13": { dayNumber: 13, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-14": { dayNumber: 14, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-15": { dayNumber: 15, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-16": { dayNumber: 16, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'SALETE', color: 'GREEN' }] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }] },
+      "2026-10-17": { dayNumber: 17, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-10-18": { dayNumber: 18, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 4 (19 a 25/10) - Ciclo A (Retorno): Manhã (Livia + Natália) / Noite (Matheus + Salete) - 4ª Sexta (Folga Verde Natália)
+      "2026-10-19": { dayNumber: 19, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-20": { dayNumber: 20, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-21": { dayNumber: 21, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-22": { dayNumber: 22, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-23": { dayNumber: 23, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-24": { dayNumber: 24, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-10-25": { dayNumber: 25, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 5 (26 a 31/10) - Ciclo A: Manhã (Matheus + Salete) / Noite (Livia + Natália)
+      "2026-10-26": { dayNumber: 26, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-27": { dayNumber: 27, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-28": { dayNumber: 28, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-29": { dayNumber: 29, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-30": { dayNumber: 30, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-31": { dayNumber: 31, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] }
+    };
+    return {
+      yearMonth: '2026-10',
+      year: 2026,
+      month: 10,
+      generatedAt: new Date().toISOString(),
+      days: days
+    };
+  }
+
   init() {
     const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
 
@@ -1218,6 +1270,10 @@ class Store {
           }
         }
       }
+    }
+    if (!existingSchedules['2026-10']) {
+      existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
+      schedulesModified = true;
     }
     if (!existingSchedules['2026-09']) {
       existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();
@@ -1589,15 +1645,15 @@ class PharmacyScheduler {
           satOffEmps = [empsList[mod3]];
         }
       } else if (numEmps === 4) {
-        // Quem trabalha no sábado vs quem folga:
-        // mod4===0: trabalham E0,E2 → folgam E1,E3
-        // mod4===1: trabalham E3,E1 → folgam E0,E2
-        // mod4===2: trabalham E2,E0 → folgam E3,E1
-        // mod4===3: trabalham E1,E3 → folgam E0,E2
-        if (mod4 === 0) satOffEmps = [empsList[1], empsList[3]];
-        else if (mod4 === 1) satOffEmps = [empsList[0], empsList[2]];
-        else if (mod4 === 2) satOffEmps = [empsList[3], empsList[1]];
-        else satOffEmps = [empsList[0], empsList[2]];
+        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
+        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
+        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
+        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
+
+        if (mod4 === 0) satOffEmps = [novataF, expNatalia];
+        else if (mod4 === 1) satOffEmps = [novatoM, expNatalia];
+        else if (mod4 === 2) satOffEmps = [novataF, expSalete];
+        else satOffEmps = [novatoM, expSalete];
       } else if (numEmps === 5) {
         // Domingo: w3 e w4 trabalham → eles folgaram no sábado
         const w3 = empsList[(3 + globalWeekIdx * 2) % 5];
@@ -1823,38 +1879,35 @@ class PharmacyScheduler {
       } else if (numEmps === 4) {
         // ==========================================
         // --- CASO 4 FUNCIONÁRIOS (2 NO T1, 2 NO T3, T2 VAZIO) ---
+        // REGRA DE ALTERNÂNCIA E PRIORIZAÇÃO DA NOITE:
+        // - Alternância semanal contínua de turnos (T1 na semana N -> T3 na semana N+1).
+        // - Prioridade no Turno da Noite (T3) para homens (MATHEUS) em eventuais repetições.
         // ==========================================
-        const novatos = empsList.filter(e => {
-          const n = (e.name || '').toUpperCase();
-          return n.includes('LIVIA') || n.includes('LÍVIA') || n.includes('MATHEUS');
-        });
-        const experientes = empsList.filter(e => !novatos.includes(e));
+        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
+        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
+        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
+        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
 
-        let groupA, groupB;
-        const pairCycle = Math.floor(globalWeekIdx / 2) % 2;
-        if (novatos.length === 2 && experientes.length >= 2) {
-          if (pairCycle === 0) {
-            groupA = [novatos[0], experientes[0]]; // Lívia + Natália
-            groupB = [novatos[1], experientes[1]]; // Matheus + Salete
-          } else {
-            groupA = [novatos[0], experientes[1]]; // Lívia + Salete
-            groupB = [novatos[1], experientes[0]]; // Matheus + Natália
-          }
+        let t1Group, t3Group;
+        if (mod4 === 0) {
+          t1Group = [novatoM, expSalete]; // MATHEUS + SALETE
+          t3Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+        } else if (mod4 === 1) {
+          t1Group = [novataF, expSalete]; // LÍVIA + SALETE
+          t3Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
+        } else if (mod4 === 2) {
+          t1Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
+          t3Group = [novataF, expSalete]; // LÍVIA + SALETE
         } else {
-          groupA = [empsList[0], empsList[1]];
-          groupB = [empsList[2], empsList[3]];
+          t1Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+          t3Group = [novatoM, expSalete]; // MATHEUS + SALETE
         }
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-          const t1Group = isEvenWeek ? groupA : groupB;
-          const t3Group = isEvenWeek ? groupB : groupA;
           t1Group.forEach(e => slots[0].push({ employeeName: e.name, color: 'NORMAL' }));
           t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
 
         } else if (dayOfWeek === 5) {
-          const t1Group = isEvenWeek ? groupA : groupB;
-          const t3Group = isEvenWeek ? groupB : groupA;
-
           t1Group.forEach(e => {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
             if (isGreen) {
@@ -1875,17 +1928,17 @@ class PharmacyScheduler {
         } else if (dayOfWeek === 6) {
           let satT1, satT3;
           if (mod4 === 0) {
-            satT1 = empsList[0];
-            satT3 = empsList[2];
+            satT1 = expSalete;
+            satT3 = novatoM;
           } else if (mod4 === 1) {
-            satT1 = empsList[3];
-            satT3 = empsList[1];
+            satT1 = expSalete;
+            satT3 = novataF;
           } else if (mod4 === 2) {
-            satT1 = empsList[2];
-            satT3 = empsList[0];
+            satT1 = expNatalia;
+            satT3 = novatoM;
           } else {
-            satT1 = empsList[1];
-            satT3 = empsList[3];
+            satT1 = expNatalia;
+            satT3 = novataF;
           }
           slots[0].push({ employeeName: satT1.name, color: 'RED' });
           slots[2].push({ employeeName: satT3.name, color: 'RED' });
@@ -1893,17 +1946,17 @@ class PharmacyScheduler {
         } else if (dayOfWeek === 0) {
           let sunT1, sunT3;
           if (mod4 === 0) {
-            sunT1 = empsList[1];
-            sunT3 = empsList[3];
+            sunT1 = expNatalia;
+            sunT3 = novataF;
           } else if (mod4 === 1) {
-            sunT1 = empsList[2];
-            sunT3 = empsList[0];
+            sunT1 = expNatalia;
+            sunT3 = novatoM;
           } else if (mod4 === 2) {
-            sunT1 = empsList[3];
-            sunT3 = empsList[1];
+            sunT1 = expSalete;
+            sunT3 = novataF;
           } else {
-            sunT1 = empsList[0];
-            sunT3 = empsList[2];
+            sunT1 = expSalete;
+            sunT3 = novatoM;
           }
           slots[0].push({ employeeName: sunT1.name, color: 'RED' });
           slots[2].push({ employeeName: sunT3.name, color: 'RED' });

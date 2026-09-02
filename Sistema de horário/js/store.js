@@ -4,7 +4,7 @@
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'farmacia_escala_employees_v3',
-  SCHEDULES: 'farmacia_escala_schedules_v17',
+  SCHEDULES: 'farmacia_escala_schedules_v18',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
   ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
@@ -170,6 +170,58 @@ class Store {
     };
   }
 
+  getDefaultOctober2026Schedule() {
+    const days = {
+      // Semana 1 (01 a 04/10) - Continuação da Semana 5 de Setembro (Ciclo A): Manhã (Matheus + Salete) / Noite (Livia + Natália) - 1ª Sexta (Folga Verde Livia)
+      "2026-10-01": { dayNumber: 1, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-02": { dayNumber: 2, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-03": { dayNumber: 3, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-10-04": { dayNumber: 4, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 2 (05 a 11/10) - Ciclo B: Manhã (Livia + Salete) / Noite (Matheus + Natália) - 2ª Sexta (Folga Verde Matheus)
+      "2026-10-05": { dayNumber: 5, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-06": { dayNumber: 6, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-07": { dayNumber: 7, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-08": { dayNumber: 8, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-09": { dayNumber: 9, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-10": { dayNumber: 10, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-10-11": { dayNumber: 11, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 3 (12 a 18/10) - Ciclo B (Inversão): Manhã (Matheus + Natália) / Noite (Livia + Salete) - 3ª Sexta (Folga Verde Salete)
+      "2026-10-12": { dayNumber: 12, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-13": { dayNumber: 13, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-14": { dayNumber: 14, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-15": { dayNumber: 15, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-16": { dayNumber: 16, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'SALETE', color: 'GREEN' }] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }] },
+      "2026-10-17": { dayNumber: 17, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+      "2026-10-18": { dayNumber: 18, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+
+      // Semana 4 (19 a 25/10) - Ciclo A (Retorno): Manhã (Livia + Natália) / Noite (Matheus + Salete) - 4ª Sexta (Folga Verde Natália)
+      "2026-10-19": { dayNumber: 19, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-20": { dayNumber: 20, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-21": { dayNumber: 21, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-22": { dayNumber: 22, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-23": { dayNumber: 23, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
+      "2026-10-24": { dayNumber: 24, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
+      "2026-10-25": { dayNumber: 25, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
+
+      // Semana 5 (26 a 31/10) - Ciclo A: Manhã (Matheus + Salete) / Noite (Livia + Natália)
+      "2026-10-26": { dayNumber: 26, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-27": { dayNumber: 27, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-28": { dayNumber: 28, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-29": { dayNumber: 29, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-30": { dayNumber: 30, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
+      "2026-10-31": { dayNumber: 31, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] }
+    };
+    return {
+      yearMonth: '2026-10',
+      year: 2026,
+      month: 10,
+      generatedAt: new Date().toISOString(),
+      days: days
+    };
+  }
+
   init() {
     const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
 
@@ -206,6 +258,10 @@ class Store {
           }
         }
       }
+    }
+    if (!existingSchedules['2026-10']) {
+      existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
+      schedulesModified = true;
     }
     if (!existingSchedules['2026-09']) {
       existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();

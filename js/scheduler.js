@@ -139,10 +139,15 @@ class PharmacyScheduler {
           satOffEmps = [empsList[mod3]];
         }
       } else if (numEmps === 4) {
-        if (mod4 === 0) satOffEmps = [empsList[1], empsList[3]];
-        else if (mod4 === 1) satOffEmps = [empsList[0], empsList[2]];
-        else if (mod4 === 2) satOffEmps = [empsList[3], empsList[1]];
-        else satOffEmps = [empsList[0], empsList[2]];
+        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
+        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
+        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
+        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
+
+        if (mod4 === 0) satOffEmps = [novataF, expNatalia];
+        else if (mod4 === 1) satOffEmps = [novatoM, expNatalia];
+        else if (mod4 === 2) satOffEmps = [novataF, expSalete];
+        else satOffEmps = [novatoM, expSalete];
       } else if (numEmps === 5) {
         const w3 = empsList[(3 + globalWeekIdx * 2) % 5];
         const w4 = empsList[(4 + globalWeekIdx * 2) % 5];
@@ -364,38 +369,35 @@ class PharmacyScheduler {
       } else if (numEmps === 4) {
         // ==========================================
         // --- CASO 4 FUNCIONÁRIOS (2 NO T1, 2 NO T3, T2 VAZIO) ---
+        // REGRA DE ALTERNÂNCIA E PRIORIZAÇÃO DA NOITE:
+        // - Alternância semanal contínua de turnos (T1 na semana N -> T3 na semana N+1).
+        // - Prioridade no Turno da Noite (T3) para homens (MATHEUS) em eventuais repetições.
         // ==========================================
-        const novatos = empsList.filter(e => {
-          const n = (e.name || '').toUpperCase();
-          return n.includes('LIVIA') || n.includes('LÍVIA') || n.includes('MATHEUS');
-        });
-        const experientes = empsList.filter(e => !novatos.includes(e));
+        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
+        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
+        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
+        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
 
-        let groupA, groupB;
-        const pairCycle = Math.floor(globalWeekIdx / 2) % 2;
-        if (novatos.length === 2 && experientes.length >= 2) {
-          if (pairCycle === 0) {
-            groupA = [novatos[0], experientes[0]]; // Lívia + Natália
-            groupB = [novatos[1], experientes[1]]; // Matheus + Salete
-          } else {
-            groupA = [novatos[0], experientes[1]]; // Lívia + Salete
-            groupB = [novatos[1], experientes[0]]; // Matheus + Natália
-          }
+        let t1Group, t3Group;
+        if (mod4 === 0) {
+          t1Group = [novatoM, expSalete]; // MATHEUS + SALETE
+          t3Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+        } else if (mod4 === 1) {
+          t1Group = [novataF, expSalete]; // LÍVIA + SALETE
+          t3Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
+        } else if (mod4 === 2) {
+          t1Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
+          t3Group = [novataF, expSalete]; // LÍVIA + SALETE
         } else {
-          groupA = [empsList[0], empsList[1]];
-          groupB = [empsList[2], empsList[3]];
+          t1Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+          t3Group = [novatoM, expSalete]; // MATHEUS + SALETE
         }
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-          const t1Group = isEvenWeek ? groupA : groupB;
-          const t3Group = isEvenWeek ? groupB : groupA;
           t1Group.forEach(e => slots[0].push({ employeeName: e.name, color: 'NORMAL' }));
           t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
 
         } else if (dayOfWeek === 5) {
-          const t1Group = isEvenWeek ? groupA : groupB;
-          const t3Group = isEvenWeek ? groupB : groupA;
-
           t1Group.forEach(e => {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
             if (isGreen) {
@@ -416,17 +418,17 @@ class PharmacyScheduler {
         } else if (dayOfWeek === 6) {
           let satT1, satT3;
           if (mod4 === 0) {
-            satT1 = empsList[0];
-            satT3 = empsList[2];
+            satT1 = expSalete;
+            satT3 = novatoM;
           } else if (mod4 === 1) {
-            satT1 = empsList[3];
-            satT3 = empsList[1];
+            satT1 = expSalete;
+            satT3 = novataF;
           } else if (mod4 === 2) {
-            satT1 = empsList[2];
-            satT3 = empsList[0];
+            satT1 = expNatalia;
+            satT3 = novatoM;
           } else {
-            satT1 = empsList[1];
-            satT3 = empsList[3];
+            satT1 = expNatalia;
+            satT3 = novataF;
           }
           slots[0].push({ employeeName: satT1.name, color: 'RED' });
           slots[2].push({ employeeName: satT3.name, color: 'RED' });
@@ -434,17 +436,17 @@ class PharmacyScheduler {
         } else if (dayOfWeek === 0) {
           let sunT1, sunT3;
           if (mod4 === 0) {
-            sunT1 = empsList[1];
-            sunT3 = empsList[3];
+            sunT1 = expNatalia;
+            sunT3 = novataF;
           } else if (mod4 === 1) {
-            sunT1 = empsList[2];
-            sunT3 = empsList[0];
+            sunT1 = expNatalia;
+            sunT3 = novatoM;
           } else if (mod4 === 2) {
-            sunT1 = empsList[3];
-            sunT3 = empsList[1];
+            sunT1 = expSalete;
+            sunT3 = novataF;
           } else {
-            sunT1 = empsList[0];
-            sunT3 = empsList[2];
+            sunT1 = expSalete;
+            sunT3 = novatoM;
           }
           slots[0].push({ employeeName: sunT1.name, color: 'RED' });
           slots[2].push({ employeeName: sunT3.name, color: 'RED' });
