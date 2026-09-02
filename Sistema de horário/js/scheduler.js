@@ -94,8 +94,8 @@ class PharmacyScheduler {
       candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
     }
 
-    // Âncora perpétua: Segunda-feira 03/08/2026 (Início da escala base)
-    const epochMonday = new Date(2026, 7, 3);
+    // Âncora perpétua: Segunda-feira 24/08/2026 (Matriz Universal Fixa de 24 a 31 de Agosto)
+    const epochMonday = new Date(2026, 7, 24);
 
     // Identifica se há alguém com preferência explícita de noite de Seg-Qui
     const explicitNightEmp = empsList.find(e => e.prefShift === 'NIGHT_WEEKDAY');
@@ -380,17 +380,17 @@ class PharmacyScheduler {
 
         let t1Group, t3Group;
         if (mod4 === 0) {
-          t1Group = [novatoM, expSalete]; // MATHEUS + SALETE
-          t3Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+          t1Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA (Semana 24 a 28/08)
+          t3Group = [novatoM, expSalete]; // MATHEUS + SALETE
         } else if (mod4 === 1) {
+          t1Group = [novatoM, expSalete]; // MATHEUS + SALETE (Semana 31/08 a 04/09)
+          t3Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
+        } else if (mod4 === 2) {
           t1Group = [novataF, expSalete]; // LÍVIA + SALETE
           t3Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
-        } else if (mod4 === 2) {
+        } else {
           t1Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
           t3Group = [novataF, expSalete]; // LÍVIA + SALETE
-        } else {
-          t1Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
-          t3Group = [novatoM, expSalete]; // MATHEUS + SALETE
         }
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {

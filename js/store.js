@@ -4,7 +4,7 @@
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'farmacia_escala_employees_v3',
-  SCHEDULES: 'farmacia_escala_schedules_v18',
+  SCHEDULES: 'farmacia_escala_schedules_v19',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
   ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
