@@ -65,18 +65,6 @@
             <i data-lucide="clock" class="icon-sm"></i>
             <span id="realtime-clock-text">--:--:--</span>
           </div>
-
-          <!-- BOTÃO PÚBLICO DE VISUALIZAÇÃO DE PLANTÃO HOJE -->
-          <button id="btn-public-today-shifts" class="btn btn-secondary-pill" title="Visualizar Plantão de Hoje (L1 & L2)">
-            <i data-lucide="sun" style="color: #0284c7;"></i>
-            <span>Plantão Hoje</span>
-          </button>
-
-          <!-- BOTÃO PÚBLICO DE VISUALIZAÇÃO DE AÇÕES DA FARMÁCIA -->
-          <button id="btn-public-campaigns" class="btn btn-secondary-pill" title="Visualizar Ações e Campanhas da Farmácia">
-            <i data-lucide="target" style="color: #eab308;"></i>
-            <span>Ações da Farmácia</span>
-          </button>
         </div>
       </div>
 
@@ -84,15 +72,7 @@
 
       <!-- GRUPO DIREITO: AÇÕES DE ADMIN E BOTÃO ADMIN -->
       <div class="topbar-right-group">
-        <!-- RELATÓRIO DE FINS DE SEMANA E FOLGAS (DISPONÍVEL APENAS NO MODO ADMIN) -->
-        <div class="topbar-block block-report-action admin-only hidden">
-          <button id="btn-open-weekend-report" class="btn btn-secondary-pill" title="Ver Relatório de Fins de Semana e Folgas do Mês">
-            <i data-lucide="bar-chart-3"></i>
-            <span>Relatório</span>
-          </button>
-        </div>
-
-        <!-- AÇÃO PRINCIPAL (GERAR ESCALA) -->
+        <!-- AÇÃO PRINCIPAL (GERAR ESCALA - APENAS NO MODO ADMIN) -->
         <div class="topbar-block block-main-action admin-only hidden">
           <button id="btn-auto-generate" class="btn btn-emerald" title="Gerar escala automática para a equipe deste mês">
             <i data-lucide="sparkles"></i>
@@ -100,8 +80,8 @@
           </button>
         </div>
 
-        <!-- AÇÕES SECUNDÁRIAS (MENU MAIS AÇÕES) -->
-        <div class="topbar-block block-secondary-actions export-wrapper admin-only hidden">
+        <!-- AÇÕES SECUNDÁRIAS (MENU MAIS AÇÕES - DISPONÍVEL PARA TODOS) -->
+        <div class="topbar-block block-secondary-actions export-wrapper">
           <button id="btn-more-actions" class="btn btn-secondary-pill" title="Outras Ações">
             <i data-lucide="more-vertical"></i>
             <span>Mais ações</span>
@@ -115,14 +95,20 @@
               <span>Plantão Hoje (L1 & L2)</span>
             </button>
 
-            <!-- 📊 Relatório -->
-            <button id="btn-dropdown-weekend-report" class="dropdown-item">
-              <i data-lucide="bar-chart-3"></i>
+            <!-- 🎯 Ações da Farmácia -->
+            <button id="btn-dropdown-campaigns" class="dropdown-item">
+              <i data-lucide="target" style="color: #eab308;"></i>
+              <span>Ações da Farmácia</span>
+            </button>
+
+            <!-- 📊 Relatório (Admin) -->
+            <button id="btn-dropdown-weekend-report" class="dropdown-item admin-only hidden">
+              <i data-lucide="bar-chart-3" style="color: #0284c7;"></i>
               <span>Relatório Fins de Semana & Folgas</span>
             </button>
 
-            <!-- ⚙ Configurações -->
-            <button id="btn-manage-team" class="dropdown-item">
+            <!-- ⚙ Configurações (Admin) -->
+            <button id="btn-manage-team" class="dropdown-item admin-only hidden">
               <i data-lucide="settings"></i>
               <span>Configurações</span>
             </button>
@@ -816,9 +802,6 @@
                 <span style="width: 10px; height: 10px; border-radius: 50%; background: #0284c7;"></span>
                 <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">Bethel - Loja 1</h4>
               </div>
-              <a href="https://farmacia-bethel-escala.vercel.app" target="_blank" style="font-size: 0.72rem; color: #0284c7; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 2px;">
-                Acessar L1 <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
-              </a>
             </div>
             <div id="consolidated-l1-shifts" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.82rem;">
               <!-- Dynamic shifts for L1 -->
@@ -2233,13 +2216,14 @@ class CalendarManager {
       window.print();
     });
 
-    document.getElementById('btn-public-today-shifts')?.addEventListener('click', () => {
-      this.openConsolidatedTodayModal();
-    });
-
     document.getElementById('btn-dropdown-consolidated-today')?.addEventListener('click', () => {
       document.getElementById('more-actions-dropdown')?.classList.add('hidden');
       this.openConsolidatedTodayModal();
+    });
+
+    document.getElementById('btn-dropdown-campaigns')?.addEventListener('click', () => {
+      document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+      this.openCampaignsModal();
     });
 
     document.getElementById('btn-share-today-whatsapp')?.addEventListener('click', () => {
