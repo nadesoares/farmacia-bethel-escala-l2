@@ -151,6 +151,15 @@ class CalendarManager {
       this.saveMonthTeam();
     });
 
+    document.getElementById('btn-dropdown-consolidated-today')?.addEventListener('click', () => {
+      document.getElementById('more-actions-dropdown')?.classList.add('hidden');
+      this.openConsolidatedTodayModal();
+    });
+
+    document.getElementById('btn-share-today-whatsapp')?.addEventListener('click', () => {
+      this.shareTodayWhatsApp();
+    });
+
     const btnTeam = document.getElementById('btn-manage-team');
     if (btnTeam) {
       btnTeam.addEventListener('click', () => {
@@ -394,6 +403,143 @@ class CalendarManager {
 
     window.app?.openModal('modal-weekend-report');
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  openConsolidatedTodayModal() {
+    const today = new Date();
+    const tYear = today.getFullYear();
+    const tMonth = today.getMonth() + 1;
+    const tDate = today.getDate();
+    const todayKey = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(tDate).padStart(2, '0')}`;
+    const yearMonthKey = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+    const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const todayFormatted = `${dayNames[today.getDay()]}, ${String(tDate).padStart(2, '0')} de ${MONTH_NAMES[tMonth - 1]} de ${tYear}`;
+
+    const subtitleEl = document.getElementById('consolidated-today-date-subtitle');
+    if (subtitleEl) subtitleEl.textContent = todayFormatted;
+
+    // Obter Escala do L2 (Local)
+    const scheduleL2 = this.store.getMonthSchedule(yearMonthKey) || this.store.getSchedule(yearMonthKey);
+    const dayDataL2 = scheduleL2?.days?.[todayKey];
+    const containerL2 = document.getElementById('consolidated-l2-shifts');
+    if (containerL2) {
+      containerL2.innerHTML = this.renderConsolidatedDayShifts(dayDataL2, 'L2');
+    }
+
+    // Obter Escala do L1
+    const containerL1 = document.getElementById('consolidated-l1-shifts');
+    if (containerL1) {
+      containerL1.innerHTML = this.renderConsolidatedL1DayShifts(today, todayKey);
+    }
+
+    window.app?.openModal('modal-consolidated-today');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderConsolidatedDayShifts(dayData, storeName) {
+    if (!dayData || !dayData.slots || dayData.slots.length === 0) {
+      return '<p style="color: #64748b; margin: 0.5rem 0; font-style: italic;">Nenhum horário registrado para esta data.</p>';
+    }
+
+    const shiftNames = ['1º Turno (07:00 às 15:20)', '2º Turno (Intermediário)', '3º Turno (14:40 às 23:00)'];
+    let html = '';
+
+    dayData.slots.forEach((slot, sIdx) => {
+      const workers = slot.workers || [];
+      const shiftTitle = shiftNames[sIdx] || `Turno ${sIdx + 1}`;
+
+      if (workers.length === 0) {
+        html += `
+          <div style="background: rgba(0,0,0,0.02); padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px dashed #cbd5e1;">
+            <strong style="font-size: 0.76rem; color: #64748b;">${shiftTitle}:</strong>
+            <span style="color: #94a3b8; font-size: 0.76rem; margin-left: 0.3rem;">Sem escala</span>
+          </div>
+        `;
+      } else {
+        const chips = workers.map(w => {
+          const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
+          return `<span class="worker-chip ${colorClass}" style="font-size: 0.76rem; padding: 2px 7px;">${w.employeeName}</span>`;
+        }).join(' ');
+
+        html += `
+          <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+            <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">${shiftTitle}:</strong>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">${chips}</div>
+          </div>
+        `;
+      }
+    });
+
+    return html;
+  }
+
+  renderConsolidatedL1DayShifts(today, todayKey) {
+    const dow = today.getDay(); // 0=Dom, 6=Sáb
+    let l1Html = '';
+    
+    if (dow === 0) {
+      l1Html = `
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (Manhã):</strong>
+          <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
+        </div>
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">2º Turno (Intermediário):</strong>
+          <span class="worker-chip color-green" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN (Folga)</span>
+        </div>
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
+          <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+        </div>
+      `;
+    } else {
+      l1Html = `
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (07:00 às 15:20):</strong>
+          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
+        </div>
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">2º Turno (Intermediário):</strong>
+          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
+        </div>
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (14:40 às 23:00):</strong>
+          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+        </div>
+      `;
+    }
+
+    return l1Html;
+  }
+
+  shareTodayWhatsApp() {
+    const today = new Date();
+    const tYear = today.getFullYear();
+    const tMonth = today.getMonth() + 1;
+    const tDate = today.getDate();
+    const todayKey = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(tDate).padStart(2, '0')}`;
+    const yearMonthKey = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+    const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const todayFormatted = `${dayNames[today.getDay()]}, ${String(tDate).padStart(2, '0')}/${String(tMonth).padStart(2, '0')}/${tYear}`;
+
+    const schedule = this.store.getMonthSchedule(yearMonthKey) || this.store.getSchedule(yearMonthKey);
+    const dayData = schedule?.days?.[todayKey];
+
+    let l2Text = '';
+    if (dayData && dayData.slots) {
+      const shiftLabels = ['1º Turno (Manhã)', '2º Turno (Intermediário)', '3º Turno (Noite)'];
+      dayData.slots.forEach((s, idx) => {
+        const names = (s.workers || []).map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(', ');
+        l2Text += `  • *${shiftLabels[idx]}*: ${names || 'Sem escala'}\n`;
+      });
+    } else {
+      l2Text = '  • Escala em aberto\n';
+    }
+
+    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Intermediário*: MAURÍCIO\n  • *Noite*: DJANE\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   }
 
   getEmptyMonthSchedule(year, month) {

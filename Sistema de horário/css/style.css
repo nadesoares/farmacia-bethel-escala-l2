@@ -186,6 +186,20 @@ h1, h2, h3, h4 {
   font-weight: 900;
   color: #dc2626;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-store-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #ffffff;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .date-navigator {
