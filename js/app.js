@@ -26,6 +26,11 @@ class App {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+
+    // Abertura automática do Popup de Plantão de Hoje na Página Geral
+    setTimeout(() => {
+      window.calendarManager?.openConsolidatedTodayModal();
+    }, 350);
   }
 
   // --- BOTÕES DO TOPO (CONFIGURAÇÃO DE EQUIPE GERAL) ---

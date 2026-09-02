@@ -66,6 +66,12 @@
             <span id="realtime-clock-text">--:--:--</span>
           </div>
 
+          <!-- BOTÃO PÚBLICO DE VISUALIZAÇÃO DE PLANTÃO HOJE -->
+          <button id="btn-public-today-shifts" class="btn btn-secondary-pill" title="Visualizar Plantão de Hoje (L1 & L2)">
+            <i data-lucide="sun" style="color: #0284c7;"></i>
+            <span>Plantão Hoje</span>
+          </button>
+
           <!-- BOTÃO PÚBLICO DE VISUALIZAÇÃO DE AÇÕES DA FARMÁCIA -->
           <button id="btn-public-campaigns" class="btn btn-secondary-pill" title="Visualizar Ações e Campanhas da Farmácia">
             <i data-lucide="target" style="color: #eab308;"></i>
@@ -2227,6 +2233,10 @@ class CalendarManager {
       window.print();
     });
 
+    document.getElementById('btn-public-today-shifts')?.addEventListener('click', () => {
+      this.openConsolidatedTodayModal();
+    });
+
     document.getElementById('btn-dropdown-consolidated-today')?.addEventListener('click', () => {
       document.getElementById('more-actions-dropdown')?.classList.add('hidden');
       this.openConsolidatedTodayModal();
@@ -4384,6 +4394,11 @@ class App {
 
     this.updateAdminUI();
     if (window.lucide) window.lucide.createIcons();
+
+    // Abertura automática do Popup de Plantão de Hoje na Página Geral
+    setTimeout(() => {
+      window.calendarManager?.openConsolidatedTodayModal();
+    }, 350);
   }
 
   bindTopControls() {
