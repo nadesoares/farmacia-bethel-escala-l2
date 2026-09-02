@@ -217,12 +217,15 @@
           </div>
         </div>
 
-        <!-- Rodapé do Calendário: Feriados Nacionais e Ações da Farmácia -->
+        <!-- Rodapé do Calendário: Feriados Nacionais, Ações da Farmácia e Aniversariantes do Mês -->
         <div class="calendar-footer-row">
           <div id="calendar-holidays-container" class="calendar-holidays-container">
             <!-- Renderizado dinamicamente -->
           </div>
           <div id="calendar-campaigns-container" class="calendar-campaigns-container">
+            <!-- Renderizado dinamicamente -->
+          </div>
+          <div id="calendar-birthdays-container" class="calendar-birthdays-container">
             <!-- Renderizado dinamicamente -->
           </div>
         </div>
@@ -552,6 +555,11 @@
           <div class="form-group">
             <label for="employee-name">Nome do Colaborador *</label>
             <input type="text" id="employee-name" class="form-input-modern" placeholder="Ex: Carlos, Ana, Roberto..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="employee-birthday">Data de Aniversário (Dia/Mês)</label>
+            <input type="text" id="employee-birthday" class="form-input-modern" placeholder="Ex: 15/09 ou 28/04" maxlength="5">
           </div>
           
           <div class="form-group">
@@ -2725,6 +2733,7 @@ class CalendarManager {
     this.renderMonthlyStats(schedule);
     this.renderHolidaysFooter();
     this.renderCampaignsFooter();
+    this.renderBirthdaysFooter();
 
     const printableCal = document.getElementById('printable-calendar');
     if (printableCal) {
@@ -2824,6 +2833,33 @@ class CalendarManager {
 
     const holidaysMap = getBrazilianHolidays(this.currentYear);
 
+    // Mapeamento de aniversariantes do mês atual
+    const activeEmps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const birthdayMap = {};
+    activeEmps.forEach(emp => {
+      if (!emp.birthday) return;
+      let bDay = null, bMonth = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        bDay = parseInt(parts[0], 10);
+        bMonth = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          bMonth = parseInt(parts[1], 10);
+          bDay = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          bMonth = parseInt(parts[0], 10);
+          bDay = parseInt(parts[1], 10);
+        }
+      }
+      if (bMonth === this.currentMonth && !isNaN(bDay) && bDay >= 1 && bDay <= 31) {
+        if (!birthdayMap[bDay]) birthdayMap[bDay] = [];
+        birthdayMap[bDay].push(emp.name);
+      }
+    });
+
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const rawDayData = (schedule.days && schedule.days[dateKey]) || { dayNumber: day, slots: [] };
@@ -2874,6 +2910,14 @@ class CalendarManager {
         holBadge.textContent = 'Feriado';
         holBadge.title = holidayName;
         topRow.appendChild(holBadge);
+      }
+
+      if (birthdayMap[day] && birthdayMap[day].length > 0) {
+        const bBadge = document.createElement('span');
+        bBadge.className = 'birthday-badge-tag';
+        bBadge.textContent = '🎂 ' + birthdayMap[day].join(', ');
+        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')}`;
+        topRow.appendChild(bBadge);
       }
 
       dayHeaderGroup.appendChild(topRow);
@@ -3364,6 +3408,61 @@ class CalendarManager {
         const item = document.createElement('div');
         item.className = 'holiday-pill-item';
         item.innerHTML = `<strong>${String(h.day).padStart(2, '0')}/${String(this.currentMonth).padStart(2, '0')}</strong> - ${h.name}`;
+        container.appendChild(item);
+      });
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderBirthdaysFooter() {
+    const container = document.getElementById('calendar-birthdays-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const emps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const monthBirthdays = [];
+
+    emps.forEach(emp => {
+      if (!emp.birthday) return;
+      let day = null, month = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          month = parseInt(parts[1], 10);
+          day = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          month = parseInt(parts[0], 10);
+          day = parseInt(parts[1], 10);
+        }
+      }
+      if (month === this.currentMonth && !isNaN(day) && day >= 1 && day <= 31) {
+        monthBirthdays.push({ day, month, name: emp.name });
+      }
+    });
+
+    monthBirthdays.sort((a, b) => a.day - b.day);
+
+    const label = document.createElement('div');
+    label.className = 'birthday-label';
+    label.innerHTML = '<i data-lucide="cake"></i><span>Aniversariantes do Mês:</span>';
+    container.appendChild(label);
+
+    if (monthBirthdays.length === 0) {
+      const noneEl = document.createElement('span');
+      noneEl.className = 'no-birthdays-text';
+      noneEl.textContent = 'Nenhum aniversariante neste mês.';
+      container.appendChild(noneEl);
+    } else {
+      monthBirthdays.forEach(b => {
+        const item = document.createElement('div');
+        item.className = 'birthday-pill-item';
+        item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
         container.appendChild(item);
       });
     }
@@ -4243,6 +4342,7 @@ class EmployeeManager {
     document.getElementById('employee-modal-title').textContent = 'Novo Colaborador';
     document.getElementById('employee-id').value = '';
     document.getElementById('employee-name').value = '';
+    document.getElementById('employee-birthday').value = '';
     document.getElementById('employee-pref-shift').value = 'NONE';
     document.getElementById('employee-color').value = '#10b981';
     document.getElementById('employee-color-preview').textContent = '#10b981';
@@ -4261,6 +4361,7 @@ class EmployeeManager {
     document.getElementById('employee-modal-title').textContent = `Editar ${emp.name}`;
     document.getElementById('employee-id').value = emp.id;
     document.getElementById('employee-name').value = emp.name;
+    document.getElementById('employee-birthday').value = emp.birthday || '';
     document.getElementById('employee-pref-shift').value = emp.prefShift || 'NONE';
     document.getElementById('employee-color').value = emp.color || '#10b981';
     document.getElementById('employee-color-preview').textContent = emp.color || '#10b981';
@@ -4284,6 +4385,7 @@ class EmployeeManager {
   saveEmployee() {
     const id = document.getElementById('employee-id').value;
     const name = document.getElementById('employee-name').value.trim();
+    const birthday = document.getElementById('employee-birthday')?.value.trim() || '';
     const prefShift = document.getElementById('employee-pref-shift').value;
     const color = document.getElementById('employee-color').value;
     const status = document.getElementById('employee-status').value;
@@ -4305,6 +4407,7 @@ class EmployeeManager {
     const employeeData = {
       id: id || null,
       name: name.toUpperCase(),
+      birthday: birthday,
       prefShift: prefShift,
       onCallDays: onCallDays,
       onCallShift: onCallShift,
@@ -4381,11 +4484,12 @@ class EmployeeManager {
             ${emp.name.charAt(0)}
           </div>
           <div class="emp-row-info">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
               <h4 style="margin: 0;">${emp.name}</h4>
               <span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}" style="font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; background: ${isActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)'}; color: ${isActive ? '#10b981' : '#94a3b8'}; border: 1px solid ${isActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(148, 163, 184, 0.3)'};">
                 ${isActive ? 'Ativo' : 'Inativo'}
               </span>
+              ${emp.birthday ? `<span style="font-size: 0.68rem; color: #db2777; font-weight: 700; background: #fdf2f8; border: 1px solid #fbcfe8; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;">🎂 ${emp.birthday}</span>` : ''}
             </div>
             <span>${shiftDescription}</span>
           </div>

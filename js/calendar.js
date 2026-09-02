@@ -603,6 +603,7 @@ class CalendarManager {
     this.renderMonthlyStats(schedule);
     this.renderHolidaysFooter();
     this.renderCampaignsFooter();
+    this.renderBirthdaysFooter();
 
     const printableCal = document.getElementById('printable-calendar');
     if (printableCal) {
@@ -720,6 +721,33 @@ class CalendarManager {
 
     const holidaysMap = getBrazilianHolidays(this.currentYear);
 
+    // Mapeamento de aniversariantes do mês atual
+    const activeEmps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const birthdayMap = {};
+    activeEmps.forEach(emp => {
+      if (!emp.birthday) return;
+      let bDay = null, bMonth = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        bDay = parseInt(parts[0], 10);
+        bMonth = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          bMonth = parseInt(parts[1], 10);
+          bDay = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          bMonth = parseInt(parts[0], 10);
+          bDay = parseInt(parts[1], 10);
+        }
+      }
+      if (bMonth === this.currentMonth && !isNaN(bDay) && bDay >= 1 && bDay <= 31) {
+        if (!birthdayMap[bDay]) birthdayMap[bDay] = [];
+        birthdayMap[bDay].push(emp.name);
+      }
+    });
+
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const dateKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const rawDayData = (schedule.days && schedule.days[dateKey]) || { dayNumber: day, slots: [] };
@@ -770,6 +798,14 @@ class CalendarManager {
         holBadge.textContent = 'Feriado';
         holBadge.title = holidayName;
         topRow.appendChild(holBadge);
+      }
+
+      if (birthdayMap[day] && birthdayMap[day].length > 0) {
+        const bBadge = document.createElement('span');
+        bBadge.className = 'birthday-badge-tag';
+        bBadge.textContent = '🎂 ' + birthdayMap[day].join(', ');
+        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')}`;
+        topRow.appendChild(bBadge);
       }
 
       dayHeaderGroup.appendChild(topRow);
@@ -1376,6 +1412,61 @@ class CalendarManager {
         const item = document.createElement('div');
         item.className = 'holiday-pill-item';
         item.innerHTML = `<strong>${String(h.day).padStart(2, '0')}/${String(this.currentMonth).padStart(2, '0')}</strong> - ${h.name}`;
+        container.appendChild(item);
+      });
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderBirthdaysFooter() {
+    const container = document.getElementById('calendar-birthdays-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const emps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const monthBirthdays = [];
+
+    emps.forEach(emp => {
+      if (!emp.birthday) return;
+      let day = null, month = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          month = parseInt(parts[1], 10);
+          day = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          month = parseInt(parts[0], 10);
+          day = parseInt(parts[1], 10);
+        }
+      }
+      if (month === this.currentMonth && !isNaN(day) && day >= 1 && day <= 31) {
+        monthBirthdays.push({ day, month, name: emp.name });
+      }
+    });
+
+    monthBirthdays.sort((a, b) => a.day - b.day);
+
+    const label = document.createElement('div');
+    label.className = 'birthday-label';
+    label.innerHTML = '<i data-lucide="cake"></i><span>Aniversariantes do Mês:</span>';
+    container.appendChild(label);
+
+    if (monthBirthdays.length === 0) {
+      const noneEl = document.createElement('span');
+      noneEl.className = 'no-birthdays-text';
+      noneEl.textContent = 'Nenhum aniversariante neste mês.';
+      container.appendChild(noneEl);
+    } else {
+      monthBirthdays.forEach(b => {
+        const item = document.createElement('div');
+        item.className = 'birthday-pill-item';
+        item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
         container.appendChild(item);
       });
     }
