@@ -71,6 +71,7 @@ class EmployeeManager {
     document.getElementById('employee-id').value = '';
     document.getElementById('employee-name').value = '';
     document.getElementById('employee-birthday').value = '';
+    if (document.getElementById('employee-phone')) document.getElementById('employee-phone').value = '';
     document.getElementById('employee-pref-shift').value = 'NONE';
     document.getElementById('employee-color').value = '#10b981';
     document.getElementById('employee-color-preview').textContent = '#10b981';
@@ -92,6 +93,7 @@ class EmployeeManager {
     document.getElementById('employee-id').value = emp.id;
     document.getElementById('employee-name').value = emp.name;
     document.getElementById('employee-birthday').value = emp.birthday || '';
+    if (document.getElementById('employee-phone')) document.getElementById('employee-phone').value = emp.phone || emp.whatsapp || '';
     document.getElementById('employee-pref-shift').value = emp.prefShift || 'NONE';
     document.getElementById('employee-color').value = emp.color || '#10b981';
     document.getElementById('employee-color-preview').textContent = emp.color || '#10b981';
@@ -116,6 +118,7 @@ class EmployeeManager {
     const id = document.getElementById('employee-id').value;
     const name = document.getElementById('employee-name').value.trim();
     const birthday = document.getElementById('employee-birthday')?.value.trim() || '';
+    const phone = document.getElementById('employee-phone')?.value.trim() || '';
     const prefShift = document.getElementById('employee-pref-shift').value;
     const color = document.getElementById('employee-color').value;
     const status = document.getElementById('employee-status').value;
@@ -139,6 +142,8 @@ class EmployeeManager {
       id: id || null,
       name: name.toUpperCase(),
       birthday: birthday,
+      phone: phone,
+      whatsapp: phone,
       prefShift: prefShift,
       onCallDays: onCallDays,
       onCallShift: onCallShift,
@@ -222,6 +227,7 @@ class EmployeeManager {
                 ${isActive ? 'Ativo' : 'Inativo'}
               </span>
               ${emp.birthday ? `<span style="font-size: 0.68rem; color: #db2777; font-weight: 700; background: #fdf2f8; border: 1px solid #fbcfe8; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;">🎂 ${emp.birthday}</span>` : ''}
+              ${(emp.phone || emp.whatsapp) ? `<span style="font-size: 0.68rem; color: #16a34a; font-weight: 700; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;"><i data-lucide="message-circle" style="width: 10px; height: 10px;"></i> ${emp.phone || emp.whatsapp}</span>` : ''}
             </div>
             <span>${shiftDescription}</span>
           </div>

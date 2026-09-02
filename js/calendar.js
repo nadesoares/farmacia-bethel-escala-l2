@@ -437,6 +437,39 @@ class CalendarManager {
       containerL1.innerHTML = this.renderConsolidatedL1DayShifts(today, todayKey);
     }
 
+    // Renderizar Banner de Aniversário de Hoje caso haja aniversariantes
+    const birthdayBanner = document.getElementById('consolidated-today-birthday-banner');
+    if (birthdayBanner) {
+      const todayBirthdays = this.checkTodayBirthdays();
+      if (todayBirthdays.length > 0) {
+        birthdayBanner.innerHTML = todayBirthdays.map(emp => {
+          let phoneNum = (emp.phone || emp.whatsapp || '').replace(/\D/g, '');
+          if (phoneNum && !phoneNum.startsWith('55') && phoneNum.length >= 10) {
+            phoneNum = '55' + phoneNum;
+          }
+          const msgText = encodeURIComponent(`🎉🎂 Olá ${emp.name}! Toda a equipe da Farmácia Bethel te deseja um Feliz Aniversário! Muita saúde, paz e sucesso hoje e sempre! 🎈🥳`);
+          const wppUrl = phoneNum ? `https://api.whatsapp.com/send?phone=${phoneNum}&text=${msgText}` : `https://api.whatsapp.com/send?text=${msgText}`;
+          return `
+            <div class="birthday-modal-banner">
+              <div class="birthday-banner-content">
+                <span class="birthday-banner-icon">🎂</span>
+                <div>
+                  <strong style="font-size: 0.85rem; color: #9d174d; display: block;">Hoje é aniversário de ${emp.name}! 🎉</strong>
+                  <span style="font-size: 0.74rem; color: #be185d;">Desejamos muita saúde, paz e sucesso!</span>
+                </div>
+              </div>
+              <a href="${wppUrl}" target="_blank" class="birthday-btn-wpp" title="Enviar parabéns no WhatsApp">
+                <i data-lucide="message-circle" style="width: 13px; height: 13px;"></i>
+                <span>Parabenizar</span>
+              </a>
+            </div>
+          `;
+        }).join('');
+      } else {
+        birthdayBanner.innerHTML = '';
+      }
+    }
+
     window.app?.openModal('modal-consolidated-today');
     if (window.lucide) window.lucide.createIcons();
   }
@@ -548,7 +581,14 @@ class CalendarManager {
       l2Text = '  • Escala em aberto\n';
     }
 
-    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
+    const todayBirthdays = this.checkTodayBirthdays();
+    let bText = '';
+    if (todayBirthdays.length > 0) {
+      const bNames = todayBirthdays.map(e => e.name).join(', ');
+      bText = `\n🎉🎂 *Aniversariante(s) de Hoje:* ${bNames}! Parabéns! 🎈\n`;
+    }
+
+    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n${bText}\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
@@ -605,6 +645,19 @@ class CalendarManager {
     this.renderCampaignsFooter();
     this.renderBirthdaysFooter();
 
+    // Disparar confetes em tela cheia na primeira abertura se hoje houver aniversariante
+    if (!this.birthdayCelebrated) {
+      const todayB = this.checkTodayBirthdays();
+      if (todayB.length > 0) {
+        this.birthdayCelebrated = true;
+        setTimeout(() => {
+          this.triggerFullscreenBirthdayConfetti();
+          const names = todayB.map(e => e.name).join(', ');
+          window.app?.showToast(`🎂 Hoje é aniversário de ${names}! Parabéns! 🎉`, 'success');
+        }, 700);
+      }
+    }
+
     const printableCal = document.getElementById('printable-calendar');
     if (printableCal) {
       if (this.store.isAdmin()) {
@@ -617,6 +670,71 @@ class CalendarManager {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+  }
+
+  checkTodayBirthdays() {
+    const today = new Date();
+    const tDay = today.getDate();
+    const tMonth = today.getMonth() + 1;
+    const emps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const todayBirthdays = [];
+
+    emps.forEach(emp => {
+      if (!emp.birthday) return;
+      let bDay = null, bMonth = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        bDay = parseInt(parts[0], 10);
+        bMonth = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          bMonth = parseInt(parts[1], 10);
+          bDay = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          bMonth = parseInt(parts[0], 10);
+          bDay = parseInt(parts[1], 10);
+        }
+      }
+      if (bMonth === tMonth && bDay === tDay) {
+        todayBirthdays.push(emp);
+      }
+    });
+
+    return todayBirthdays;
+  }
+
+  triggerConfetti(x = 0.5, y = 0.5) {
+    if (window.confetti) {
+      window.confetti({
+        particleCount: 80,
+        spread: 75,
+        origin: { x: Math.max(0.1, Math.min(0.9, x)), y: Math.max(0.1, Math.min(0.9, y)) },
+        colors: ['#db2777', '#f43f5e', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6']
+      });
+    }
+  }
+
+  triggerFullscreenBirthdayConfetti() {
+    if (!window.confetti) return;
+    const count = 250;
+    const defaults = {
+      origin: { y: 0.7 },
+      colors: ['#db2777', '#f43f5e', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#e11d48']
+    };
+
+    const fire = (particleRatio, opts) => {
+      window.confetti(Object.assign({}, defaults, opts, {
+        particleCount: Math.floor(count * particleRatio)
+      }));
+    };
+
+    fire(0.25, { spread: 30, startVelocity: 60 });
+    fire(0.2, { spread: 65 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.1, { spread: 125, startVelocity: 28, decay: 0.92, scalar: 1.2 });
+    fire(0.1, { spread: 125, startVelocity: 48 });
   }
 
   /**
@@ -804,7 +922,14 @@ class CalendarManager {
         const bBadge = document.createElement('span');
         bBadge.className = 'birthday-badge-tag';
         bBadge.textContent = '🎂 ' + birthdayMap[day].join(', ');
-        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')}`;
+        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')} (Clique para comemorar! 🎉)`;
+        bBadge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rect = bBadge.getBoundingClientRect();
+          const x = (rect.left + rect.width / 2) / window.innerWidth;
+          const y = (rect.top + rect.height / 2) / window.innerHeight;
+          this.triggerConfetti(x, y);
+        });
         topRow.appendChild(bBadge);
       }
 
@@ -1467,6 +1592,14 @@ class CalendarManager {
         const item = document.createElement('div');
         item.className = 'birthday-pill-item';
         item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
+        item.title = `Clique para comemorar o aniversário de ${b.name}! 🎉`;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rect = item.getBoundingClientRect();
+          const x = (rect.left + rect.width / 2) / window.innerWidth;
+          const y = (rect.top + rect.height / 2) / window.innerHeight;
+          this.triggerConfetti(x, y);
+        });
         container.appendChild(item);
       });
     }

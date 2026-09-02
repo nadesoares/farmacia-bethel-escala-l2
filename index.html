@@ -9,10 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Bibliotecas para Exportação PDF, Imagem e Supabase Cloud -->
+  <!-- Bibliotecas para Exportação PDF, Imagem, Supabase Cloud e Efeito Confetes -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   
   <link rel="stylesheet" href="css/style.css?v=9.0">
   <link rel="stylesheet" href="css/print.css?v=9.0" media="print">
@@ -557,9 +558,15 @@
             <input type="text" id="employee-name" class="form-input-modern" placeholder="Ex: Carlos, Ana, Roberto..." required>
           </div>
 
-          <div class="form-group">
-            <label for="employee-birthday">Data de Aniversário (Dia/Mês)</label>
-            <input type="text" id="employee-birthday" class="form-input-modern" placeholder="Ex: 15/09 ou 28/04" maxlength="5">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="employee-birthday">Data de Aniversário (Dia/Mês)</label>
+              <input type="text" id="employee-birthday" class="form-input-modern" placeholder="Ex: 15/09 ou 28/04" maxlength="5">
+            </div>
+            <div class="form-group flex-1">
+              <label for="employee-phone">WhatsApp / Celular</label>
+              <input type="tel" id="employee-phone" class="form-input-modern" placeholder="Ex: (84) 99999-9999">
+            </div>
           </div>
           
           <div class="form-group">
@@ -800,6 +807,9 @@
       </div>
       <div class="modal-body" style="padding: 1rem 1.25rem;">
         
+        <!-- Banner de Aniversariante do Dia -->
+        <div id="consolidated-today-birthday-banner"></div>
+
         <!-- Multi-store 2 column grid -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
           
@@ -2566,6 +2576,39 @@ class CalendarManager {
       containerL1.innerHTML = this.renderConsolidatedL1DayShifts(today, todayKey);
     }
 
+    // Renderizar Banner de Aniversário de Hoje caso haja aniversariantes
+    const birthdayBanner = document.getElementById('consolidated-today-birthday-banner');
+    if (birthdayBanner) {
+      const todayBirthdays = this.checkTodayBirthdays();
+      if (todayBirthdays.length > 0) {
+        birthdayBanner.innerHTML = todayBirthdays.map(emp => {
+          let phoneNum = (emp.phone || emp.whatsapp || '').replace(/\D/g, '');
+          if (phoneNum && !phoneNum.startsWith('55') && phoneNum.length >= 10) {
+            phoneNum = '55' + phoneNum;
+          }
+          const msgText = encodeURIComponent(`🎉🎂 Olá ${emp.name}! Toda a equipe da Farmácia Bethel te deseja um Feliz Aniversário! Muita saúde, paz e sucesso hoje e sempre! 🎈🥳`);
+          const wppUrl = phoneNum ? `https://api.whatsapp.com/send?phone=${phoneNum}&text=${msgText}` : `https://api.whatsapp.com/send?text=${msgText}`;
+          return `
+            <div class="birthday-modal-banner">
+              <div class="birthday-banner-content">
+                <span class="birthday-banner-icon">🎂</span>
+                <div>
+                  <strong style="font-size: 0.85rem; color: #9d174d; display: block;">Hoje é aniversário de ${emp.name}! 🎉</strong>
+                  <span style="font-size: 0.74rem; color: #be185d;">Desejamos muita saúde, paz e sucesso!</span>
+                </div>
+              </div>
+              <a href="${wppUrl}" target="_blank" class="birthday-btn-wpp" title="Enviar parabéns no WhatsApp">
+                <i data-lucide="message-circle" style="width: 13px; height: 13px;"></i>
+                <span>Parabenizar</span>
+              </a>
+            </div>
+          `;
+        }).join('');
+      } else {
+        birthdayBanner.innerHTML = '';
+      }
+    }
+
     window.app?.openModal('modal-consolidated-today');
     if (window.lucide) window.lucide.createIcons();
   }
@@ -2608,32 +2651,30 @@ class CalendarManager {
     return html;
   }
 
-  renderConsolidatedL1DayShifts(today, todayKey) {
-    const dow = today.getDay(); // 0=Dom, 6=Sáb
+  renderConsolidatedL1DayShifts(todayDate, dateKey) {
+    const dayOfWeek = todayDate.getDay();
     let l1Html = '';
-    
-    if (dow === 0) {
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
       l1Html = `
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (Manhã):</strong>
-          <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
-        </div>
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">2º Turno (Intermediário):</strong>
-          <span class="worker-chip color-green" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN (Folga)</span>
-        </div>
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
-          <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">Plantão Fim de Semana:</strong>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+            <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
+            <span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>
+            <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
+          </div>
         </div>
       `;
     } else {
       l1Html = `
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
           <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (Manhã):</strong>
-          <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
+          </div>
         </div>
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
           <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
           <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
             <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
@@ -2677,7 +2718,14 @@ class CalendarManager {
       l2Text = '  • Escala em aberto\n';
     }
 
-    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
+    const todayBirthdays = this.checkTodayBirthdays();
+    let bText = '';
+    if (todayBirthdays.length > 0) {
+      const bNames = todayBirthdays.map(e => e.name).join(', ');
+      bText = `\n🎉🎂 *Aniversariante(s) de Hoje:* ${bNames}! Parabéns! 🎈\n`;
+    }
+
+    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n${bText}\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
@@ -2735,6 +2783,19 @@ class CalendarManager {
     this.renderCampaignsFooter();
     this.renderBirthdaysFooter();
 
+    // Disparar confetes em tela cheia na primeira abertura se hoje houver aniversariante
+    if (!this.birthdayCelebrated) {
+      const todayB = this.checkTodayBirthdays();
+      if (todayB.length > 0) {
+        this.birthdayCelebrated = true;
+        setTimeout(() => {
+          this.triggerFullscreenBirthdayConfetti();
+          const names = todayB.map(e => e.name).join(', ');
+          window.app?.showToast(`🎂 Hoje é aniversário de ${names}! Parabéns! 🎉`, 'success');
+        }, 700);
+      }
+    }
+
     const printableCal = document.getElementById('printable-calendar');
     if (printableCal) {
       if (this.store.isAdmin()) printableCal.classList.add('admin-active');
@@ -2742,6 +2803,71 @@ class CalendarManager {
     }
 
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  checkTodayBirthdays() {
+    const today = new Date();
+    const tDay = today.getDate();
+    const tMonth = today.getMonth() + 1;
+    const emps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
+    const todayBirthdays = [];
+
+    emps.forEach(emp => {
+      if (!emp.birthday) return;
+      let bDay = null, bMonth = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        bDay = parseInt(parts[0], 10);
+        bMonth = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          bMonth = parseInt(parts[1], 10);
+          bDay = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          bMonth = parseInt(parts[0], 10);
+          bDay = parseInt(parts[1], 10);
+        }
+      }
+      if (bMonth === tMonth && bDay === tDay) {
+        todayBirthdays.push(emp);
+      }
+    });
+
+    return todayBirthdays;
+  }
+
+  triggerConfetti(x = 0.5, y = 0.5) {
+    if (window.confetti) {
+      window.confetti({
+        particleCount: 80,
+        spread: 75,
+        origin: { x: Math.max(0.1, Math.min(0.9, x)), y: Math.max(0.1, Math.min(0.9, y)) },
+        colors: ['#db2777', '#f43f5e', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6']
+      });
+    }
+  }
+
+  triggerFullscreenBirthdayConfetti() {
+    if (!window.confetti) return;
+    const count = 250;
+    const defaults = {
+      origin: { y: 0.7 },
+      colors: ['#db2777', '#f43f5e', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#e11d48']
+    };
+
+    const fire = (particleRatio, opts) => {
+      window.confetti(Object.assign({}, defaults, opts, {
+        particleCount: Math.floor(count * particleRatio)
+      }));
+    };
+
+    fire(0.25, { spread: 30, startVelocity: 60 });
+    fire(0.2, { spread: 65 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.1, { spread: 125, startVelocity: 28, decay: 0.92, scalar: 1.2 });
+    fire(0.1, { spread: 125, startVelocity: 48 });
   }
 
   normalizeDaySlots(rawSlots) {
@@ -2916,7 +3042,14 @@ class CalendarManager {
         const bBadge = document.createElement('span');
         bBadge.className = 'birthday-badge-tag';
         bBadge.textContent = '🎂 ' + birthdayMap[day].join(', ');
-        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')}`;
+        bBadge.title = `Aniversariante(s): ${birthdayMap[day].join(', ')} (Clique para comemorar! 🎉)`;
+        bBadge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rect = bBadge.getBoundingClientRect();
+          const x = (rect.left + rect.width / 2) / window.innerWidth;
+          const y = (rect.top + rect.height / 2) / window.innerHeight;
+          this.triggerConfetti(x, y);
+        });
         topRow.appendChild(bBadge);
       }
 
@@ -3575,6 +3708,69 @@ class CalendarManager {
         item.className = `campaign-footer-chip ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
         item.style.backgroundColor = campaign.color || '#eab308';
         item.innerHTML = `<i data-lucide="target" style="width: 12px; height: 12px;"></i> <strong>${campaign.title}</strong>`;
+        container.appendChild(item);
+      });
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderBirthdaysFooter() {
+    const container = document.getElementById('calendar-birthdays-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const employees = this.store.getEmployees() || [];
+    const monthBirthdays = [];
+
+    employees.forEach(emp => {
+      if (!emp.birthday || emp.status === 'INACTIVE') return;
+      let day = null, month = null;
+      const bStr = emp.birthday.trim();
+      if (bStr.includes('/')) {
+        const parts = bStr.split('/');
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+      } else if (bStr.includes('-')) {
+        const parts = bStr.split('-');
+        if (parts.length === 3) {
+          month = parseInt(parts[1], 10);
+          day = parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          month = parseInt(parts[0], 10);
+          day = parseInt(parts[1], 10);
+        }
+      }
+      if (month === this.currentMonth && !isNaN(day) && day >= 1 && day <= 31) {
+        monthBirthdays.push({ day, month, name: emp.name });
+      }
+    });
+
+    monthBirthdays.sort((a, b) => a.day - b.day);
+
+    const label = document.createElement('div');
+    label.className = 'birthday-label';
+    label.innerHTML = '<i data-lucide="cake"></i><span>Aniversariantes do Mês:</span>';
+    container.appendChild(label);
+
+    if (monthBirthdays.length === 0) {
+      const noneEl = document.createElement('span');
+      noneEl.className = 'no-birthdays-text';
+      noneEl.textContent = 'Nenhum aniversariante neste mês.';
+      container.appendChild(noneEl);
+    } else {
+      monthBirthdays.forEach(b => {
+        const item = document.createElement('div');
+        item.className = 'birthday-pill-item';
+        item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
+        item.title = `Clique para comemorar o aniversário de ${b.name}! 🎉`;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rect = item.getBoundingClientRect();
+          const x = (rect.left + rect.width / 2) / window.innerWidth;
+          const y = (rect.top + rect.height / 2) / window.innerHeight;
+          this.triggerConfetti(x, y);
+        });
         container.appendChild(item);
       });
     }
@@ -4343,6 +4539,7 @@ class EmployeeManager {
     document.getElementById('employee-id').value = '';
     document.getElementById('employee-name').value = '';
     document.getElementById('employee-birthday').value = '';
+    if (document.getElementById('employee-phone')) document.getElementById('employee-phone').value = '';
     document.getElementById('employee-pref-shift').value = 'NONE';
     document.getElementById('employee-color').value = '#10b981';
     document.getElementById('employee-color-preview').textContent = '#10b981';
@@ -4362,6 +4559,7 @@ class EmployeeManager {
     document.getElementById('employee-id').value = emp.id;
     document.getElementById('employee-name').value = emp.name;
     document.getElementById('employee-birthday').value = emp.birthday || '';
+    if (document.getElementById('employee-phone')) document.getElementById('employee-phone').value = emp.phone || emp.whatsapp || '';
     document.getElementById('employee-pref-shift').value = emp.prefShift || 'NONE';
     document.getElementById('employee-color').value = emp.color || '#10b981';
     document.getElementById('employee-color-preview').textContent = emp.color || '#10b981';
@@ -4386,6 +4584,7 @@ class EmployeeManager {
     const id = document.getElementById('employee-id').value;
     const name = document.getElementById('employee-name').value.trim();
     const birthday = document.getElementById('employee-birthday')?.value.trim() || '';
+    const phone = document.getElementById('employee-phone')?.value.trim() || '';
     const prefShift = document.getElementById('employee-pref-shift').value;
     const color = document.getElementById('employee-color').value;
     const status = document.getElementById('employee-status').value;
@@ -4408,6 +4607,8 @@ class EmployeeManager {
       id: id || null,
       name: name.toUpperCase(),
       birthday: birthday,
+      phone: phone,
+      whatsapp: phone,
       prefShift: prefShift,
       onCallDays: onCallDays,
       onCallShift: onCallShift,
@@ -4490,6 +4691,7 @@ class EmployeeManager {
                 ${isActive ? 'Ativo' : 'Inativo'}
               </span>
               ${emp.birthday ? `<span style="font-size: 0.68rem; color: #db2777; font-weight: 700; background: #fdf2f8; border: 1px solid #fbcfe8; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;">🎂 ${emp.birthday}</span>` : ''}
+              ${(emp.phone || emp.whatsapp) ? `<span style="font-size: 0.68rem; color: #16a34a; font-weight: 700; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;"><i data-lucide="message-circle" style="width: 10px; height: 10px;"></i> ${emp.phone || emp.whatsapp}</span>` : ''}
             </div>
             <span>${shiftDescription}</span>
           </div>
