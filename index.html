@@ -1290,12 +1290,7 @@ class Store {
       }
     }
     
-    const oct2 = existingSchedules['2026-10'];
-    const oct2HasWorkers = oct2 && oct2.days && Object.values(oct2.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
-    if (!oct2HasWorkers) {
-      existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
-      schedulesModified = true;
-    }
+    
   
     if (!existingSchedules['2026-10']) {
       existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
@@ -1316,6 +1311,16 @@ class Store {
     if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234' || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === 'Bd@9998') {
       localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
     }
+
+    // Blindagem de Outubro: se inexistente ou sem funcionários preenchidos, restaura escala oficial
+    try {
+      const chkOct = existingSchedules['2026-10'];
+      const chkHasWorkers = chkOct && chkOct.days && Object.values(chkOct.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
+      if (!chkHasWorkers && typeof this.getDefaultOctober2026Schedule === 'function') {
+        existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
+        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+      }
+    } catch(err) { console.warn('Erro na blindagem de outubro:', err); }
   }
 
   resetDefaultEmployees() {
@@ -1442,7 +1447,17 @@ class Store {
   }
 
   getMonthSchedule(yearMonthKey) {
-    return this.getAllSchedules()[yearMonthKey] || null;
+    const schedules = this.getAllSchedules();
+    let sch = schedules[yearMonthKey] || null;
+    if (yearMonthKey === '2026-10') {
+      const hasWorkers = sch && sch.days && Object.values(sch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
+      if (!hasWorkers && typeof this.getDefaultOctober2026Schedule === 'function') {
+        sch = this.getDefaultOctober2026Schedule();
+        schedules['2026-10'] = sch;
+        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+      }
+    }
+    return sch;
   }
 
   saveMonthSchedule(yearMonthKey, scheduleData) {
@@ -4787,7 +4802,9 @@ class SyncManager {
         for (const ym in cloud.schedules) {
           const cSch = cloud.schedules[ym];
           const lSch = localSchedules[ym];
-          if (!lSch || JSON.stringify(lSch) !== JSON.stringify(cSch)) {
+          const lHasWorkers = lSch && lSch.days && Object.values(lSch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
+          const cHasWorkers = cSch && cSch.days && Object.values(cSch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
+          if (!lSch || (!lHasWorkers && cHasWorkers) || JSON.stringify(lSch) !== JSON.stringify(cSch)) {
             localSchedules[ym] = cSch;
             schedulesChanged = true;
           }
@@ -4871,6 +4888,7 @@ class App {
     this.bindAdminAuth();
     this.bindTopControls();
 
+    window.syncManager = new SyncManager('loja2');
     window.calendarManager = new CalendarManager(this.store, this.scheduler);
     window.employeeManager = new EmployeeManager(this.store);
     // ExportManager é instanciado no DOMContentLoaded para evitar duplicidade
