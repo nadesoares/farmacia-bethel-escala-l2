@@ -287,6 +287,7 @@ class Store {
       '2026-09': this.getDefaultSeptember2026Schedule()
     };
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    window.syncManager?.pushToCloud();
     return DEFAULT_EMPLOYEES;
   }
 

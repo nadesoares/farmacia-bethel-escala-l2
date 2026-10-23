@@ -1289,6 +1289,14 @@ class Store {
         }
       }
     }
+    
+    const oct2 = existingSchedules['2026-10'];
+    const oct2HasWorkers = oct2 && oct2.days && Object.values(oct2.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
+    if (!oct2HasWorkers) {
+      existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
+      schedulesModified = true;
+    }
+  
     if (!existingSchedules['2026-10']) {
       existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
       schedulesModified = true;
@@ -1317,6 +1325,7 @@ class Store {
       '2026-09': this.getDefaultSeptember2026Schedule()
     };
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    window.syncManager?.pushToCloud();
     return DEFAULT_EMPLOYEES;
   }
 
@@ -1356,6 +1365,7 @@ class Store {
       employees.push(newEmp);
     }
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+    window.syncManager?.pushToCloud();
     if (window.supabaseManager?.isConfigured()) {
       window.supabaseManager.saveEmployees(employees);
     }
@@ -1523,6 +1533,7 @@ class Store {
       }
     }
     localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(campaigns));
+    window.syncManager?.pushToCloud();
     return campaign;
   }
 
@@ -4724,6 +4735,128 @@ class EmployeeManager {
 /**
  * APP.JS - Inicializador
  */
+
+/**
+ * CLOUD SYNC MANAGER - Sincronização em Nuvem (Vercel API + GitHub Cloud Gist)
+ * Sincroniza automaticamente alterações do Admin entre todos os PCs e celulares sem poluição visual.
+ */
+class SyncManager {
+  constructor(storeKey) {
+    this.storeKey = storeKey; // 'loja1' ou 'loja2'
+    this.isSyncing = false;
+    this.debounceTimer = null;
+    this.initAutoSync();
+  }
+
+  initAutoSync() {
+    // Sincroniza ao abrir a página
+    setTimeout(() => this.pullFromCloud(), 400);
+
+    // Sincroniza ao focar ou reabrir a aba do navegador
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.pullFromCloud(true);
+      }
+    });
+    window.addEventListener('focus', () => this.pullFromCloud(true));
+
+    // Liveness polling a cada 45 segundos para manter telas sempre idênticas
+    setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        this.pullFromCloud(true);
+      }
+    }, 45000);
+  }
+
+  async pullFromCloud(silent = false) {
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+    try {
+      const res = await fetch('/api/sync?store=' + this.storeKey + '&t=' + Date.now());
+      if (!res.ok) { this.isSyncing = false; return; }
+      const json = await res.json();
+      if (!json.success || !json.data) { this.isSyncing = false; return; }
+
+      const cloud = json.data;
+      let hasUpdate = false;
+
+      // 1. Escalas
+      if (cloud.schedules && typeof cloud.schedules === 'object' && Object.keys(cloud.schedules).length > 0) {
+        const localSchedules = window.store?.getAllSchedules() || {};
+        let schedulesChanged = false;
+        for (const ym in cloud.schedules) {
+          const cSch = cloud.schedules[ym];
+          const lSch = localSchedules[ym];
+          if (!lSch || JSON.stringify(lSch) !== JSON.stringify(cSch)) {
+            localSchedules[ym] = cSch;
+            schedulesChanged = true;
+          }
+        }
+        if (schedulesChanged) {
+          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(localSchedules));
+          hasUpdate = true;
+        }
+      }
+
+      // 2. Funcionários
+      if (Array.isArray(cloud.employees) && cloud.employees.length > 0) {
+        const localEmps = window.store?.getEmployees() || [];
+        if (JSON.stringify(localEmps) !== JSON.stringify(cloud.employees)) {
+          localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(cloud.employees));
+          hasUpdate = true;
+        }
+      }
+
+      // 3. Campanhas / Ações da Farmácia
+      if (Array.isArray(cloud.campaigns) && cloud.campaigns.length > 0) {
+        const localCamps = (typeof window.store?.getCampaigns === 'function') ? window.store.getCampaigns() : [];
+        if (JSON.stringify(localCamps) !== JSON.stringify(cloud.campaigns)) {
+          localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(cloud.campaigns));
+          hasUpdate = true;
+        }
+      }
+
+      if (hasUpdate) {
+        window.calendarManager?.render();
+        window.employeeManager?.render();
+        if (!silent) {
+          window.app?.showToast('Escala atualizada em tempo real ✓', 'success');
+        }
+      }
+    } catch (e) {
+      console.warn('[SyncManager] Falha ao sincronizar nuvem:', e);
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  pushToCloud() {
+    clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(async () => {
+      try {
+        const payload = {
+          store: this.storeKey,
+          schedules: window.store?.getAllSchedules() || {},
+          employees: window.store?.getEmployees() || [],
+          campaigns: (typeof window.store?.getCampaigns === 'function') ? window.store.getCampaigns() : []
+        };
+
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          window.app?.showToast('Escala sincronizada na nuvem ✓', 'success');
+        }
+      } catch (e) {
+        console.warn('[SyncManager] Erro no envio cloud:', e);
+      }
+    }, 600);
+  }
+}
+
 class App {
   constructor() {
     this.store = window.store;
