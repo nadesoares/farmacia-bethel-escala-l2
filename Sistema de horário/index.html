@@ -2498,6 +2498,9 @@ class CalendarManager {
         const workersInDay = new Set();
         const fridayOffWorkers = new Set();
 
+        const vacEmpsOnDay = this.store.getEmployeesOnVacationOnDate ? this.store.getEmployeesOnVacationOnDate(dateKey) : [];
+        const vacNamesOnDay = new Set(vacEmpsOnDay.map(e => (e.name || '').trim().toUpperCase()));
+
         if (day.slots) {
           day.slots.forEach(slot => {
             if (slot.workers) {
@@ -2508,7 +2511,7 @@ class CalendarManager {
                     if (dayOfWeek === 5) {
                       fridayOffWorkers.add(name);
                     }
-                  } else {
+                  } else if (!w.isVacation && !vacNamesOnDay.has(name)) {
                     workersInDay.add(name);
                   }
                 }
@@ -2742,8 +2745,9 @@ class CalendarManager {
         `;
       } else {
         const chips = workers.map(w => {
-          const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
-          return `<span class="worker-chip ${colorClass}" style="font-size: 0.76rem; padding: 2px 7px;">${w.employeeName}</span>`;
+          const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}${w.isVacation ? ' is-vacation' : ''}`;
+          const vacSuffix = w.isVacation ? ' (Férias)' : '';
+          return `<span class="worker-chip ${colorClass}" style="font-size: 0.76rem; padding: 2px 7px;">${w.employeeName}${vacSuffix}</span>`;
         }).join('<span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>');
 
         html += `
@@ -2771,7 +2775,7 @@ class CalendarManager {
         if (idx === 1) return; // Omitir 2º turno vazio no WhatsApp
         text += `  • *${shiftLabels[idx]}*: Sem escala\n`;
       } else {
-        const names = workers.map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(' / ');
+        const names = workers.map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : (w.isVacation ? ' (Férias)' : ''))).join(' / ');
         text += `  • *${shiftLabels[idx]}*: ${names}\n`;
       }
     });
@@ -2966,7 +2970,11 @@ class CalendarManager {
             const name = item.employeeName.trim();
             if (!seenInTurn.has(name)) {
               seenInTurn.add(name);
-              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+              normalized[i].push({
+                employeeName: name,
+                color: item.color || 'NORMAL',
+                isVacation: Boolean(item.isVacation)
+              });
             }
           }
         });
@@ -2976,7 +2984,11 @@ class CalendarManager {
             const name = item.employeeName.trim();
             if (!seenInTurn.has(name)) {
               seenInTurn.add(name);
-              normalized[i].push({ employeeName: name, color: item.color || 'NORMAL' });
+              normalized[i].push({
+                employeeName: name,
+                color: item.color || 'NORMAL',
+                isVacation: Boolean(item.isVacation)
+              });
             }
           }
         });
@@ -3262,7 +3274,7 @@ class CalendarManager {
         } else {
           slotEl.className = 'slot-item slot-turn-multi';
           const chipsElements = workersInTurn.map((w, wIdx) => {
-            const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}`;
+            const colorClass = `color-${(w.color || 'NORMAL').toLowerCase()}${w.isVacation ? ' is-vacation' : ''}`;
             return `<span class="worker-chip ${colorClass}" draggable="${this.store.isAdmin()}" data-emp="${w.employeeName}" data-color="${w.color || 'NORMAL'}" data-widx="${wIdx}" data-turn="${turnIndex}" data-date="${dateKey}">${w.employeeName}</span>`;
           }).join('<span class="slot-slash">/</span>');
           slotEl.innerHTML = chipsElements;
@@ -3610,14 +3622,17 @@ class CalendarManager {
     monthEmployees.forEach(emp => { counts[emp.name] = { totalShifts: 0, emp }; });
 
     if (schedule && schedule.days) {
-      Object.values(schedule.days).forEach(day => {
+      Object.entries(schedule.days).forEach(([dateKey, day]) => {
         if (day && day.slots) {
           const normalized = this.normalizeDaySlots(day.slots);
+          const vacEmpsOnDay = this.store.getEmployeesOnVacationOnDate ? this.store.getEmployeesOnVacationOnDate(dateKey) : [];
+          const vacNamesOnDay = new Set(vacEmpsOnDay.map(e => (e.name || '').trim().toUpperCase()));
           const dayEmpsWorked = new Set();
           normalized.forEach(turnWorkers => {
             turnWorkers.forEach(w => {
-              // Folga (cor GREEN) NÃO conta como dia de trabalho
-              if (w.employeeName && counts[w.employeeName] && w.color !== 'GREEN') {
+              const cleanWName = (w.employeeName || '').trim().toUpperCase();
+              // Folga (cor GREEN) e Férias (isVacation / período de férias) NÃO contam como dia de trabalho
+              if (w.employeeName && counts[w.employeeName] && w.color !== 'GREEN' && !w.isVacation && !vacNamesOnDay.has(cleanWName)) {
                 if (!dayEmpsWorked.has(w.employeeName)) {
                   dayEmpsWorked.add(w.employeeName);
                   counts[w.employeeName].totalShifts++;
@@ -3803,6 +3818,12 @@ class CalendarManager {
     const employees = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
     const curYear = this.currentYear;
     const curMonth = this.currentMonth;
+    const curStart = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
+    const curDays = new Date(curYear, curMonth, 0).getDate();
+    const curEnd = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(curDays).padStart(2, '0')}`;
+    const curMonthTitle = MONTH_NAMES[curMonth - 1]
+      ? MONTH_NAMES[curMonth - 1].charAt(0) + MONTH_NAMES[curMonth - 1].slice(1).toLowerCase()
+      : 'Mês Atual';
 
     const nextMonth = curMonth === 12 ? 1 : curMonth + 1;
     const nextYear = curMonth === 12 ? curYear + 1 : curYear;
@@ -3819,66 +3840,88 @@ class CalendarManager {
       return `${d}/${m}`;
     };
 
-    const nextMonthVacations = [];
+    const collectVacationsForMonth = (mNum, mStart, mEnd) => {
+      const list = [];
+      employees.forEach(emp => {
+        const periods = Array.isArray(emp.vacationPeriods) ? emp.vacationPeriods : [];
+        let addedByPeriod = false;
+        periods.forEach(p => {
+          if (!p || !p.startDate || !p.endDate) return;
+          if (p.startDate <= mEnd && p.endDate >= mStart) {
+            addedByPeriod = true;
+            list.push({
+              emp,
+              name: emp.name,
+              datesLabel: `${fmtBr(p.startDate)} a ${fmtBr(p.endDate)}`
+            });
+          }
+        });
 
-    employees.forEach(emp => {
-      const periods = Array.isArray(emp.vacationPeriods) ? emp.vacationPeriods : [];
-      let addedByPeriod = false;
-      periods.forEach(p => {
-        if (!p || !p.startDate || !p.endDate) return;
-        if (p.startDate <= nextEnd && p.endDate >= nextStart) {
-          addedByPeriod = true;
-          nextMonthVacations.push({
+        // Se não tiver data exata lançada para aquele mês, mas o Mês de Direito dele for aquele mês
+        if (!addedByPeriod && parseInt(emp.vacationRightMonth, 10) === mNum) {
+          list.push({
             emp,
             name: emp.name,
-            datesLabel: `${fmtBr(p.startDate)} a ${fmtBr(p.endDate)}`
+            datesLabel: null
           });
         }
       });
+      return list;
+    };
 
-      // Se não tiver data exata lançada para o próximo mês, mas o Mês de Direito dele for o próximo mês
-      if (!addedByPeriod && parseInt(emp.vacationRightMonth, 10) === nextMonth) {
-        nextMonthVacations.push({
-          emp,
-          name: emp.name,
-          datesLabel: null
-        });
-      }
-    });
+    const currentMonthVacations = collectVacationsForMonth(curMonth, curStart, curEnd);
+    const nextMonthVacations = collectVacationsForMonth(nextMonth, nextStart, nextEnd);
 
-    if (nextMonthVacations.length === 0) {
+    if (currentMonthVacations.length === 0 && nextMonthVacations.length === 0) {
       container.style.display = 'none';
       return;
     }
 
     container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'flex-start';
+    container.style.gap = '0.35rem';
 
-    const label = document.createElement('div');
-    label.className = 'vacation-footer-label';
-    label.innerHTML = `<i data-lucide="palmtree"></i><span>Férias ${nextMonthTitle}:</span>`;
-    container.appendChild(label);
+    const buildVacationRow = (monthTitle, vacList) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; width: 100%;';
 
-    nextMonthVacations.forEach(v => {
-      const item = document.createElement('div');
-      item.className = 'vacation-pill-item';
-      if (v.datesLabel) {
-        item.innerHTML = `<strong>${v.datesLabel}</strong> - ${v.name}`;
-      } else {
-        item.innerHTML = `<strong>${v.name}</strong>`;
-      }
-      item.title = this.store.isAdmin()
-        ? `Clique para editar as férias de ${v.name}`
-        : `Férias de ${v.name} em ${nextMonthTitle}`;
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.store.isAdmin() && window.employeeManager) {
-          window.employeeManager.openEditModal(v.emp);
+      const label = document.createElement('div');
+      label.className = 'vacation-footer-label';
+      label.innerHTML = `<i data-lucide="palmtree"></i><span>Férias ${monthTitle}:</span>`;
+      row.appendChild(label);
+
+      vacList.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'vacation-pill-item';
+        if (v.datesLabel) {
+          item.innerHTML = `<strong>${v.datesLabel}</strong> - ${v.name}`;
         } else {
-          this.highlightEmployee(v.name);
+          item.innerHTML = `<strong>${v.name}</strong>`;
         }
+        item.title = this.store.isAdmin()
+          ? `Clique para editar as férias de ${v.name}`
+          : `Férias de ${v.name} em ${monthTitle}`;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this.store.isAdmin() && window.employeeManager) {
+            window.employeeManager.openEditModal(v.emp);
+          } else {
+            this.highlightEmployee(v.name);
+          }
+        });
+        row.appendChild(item);
       });
-      container.appendChild(item);
-    });
+
+      return row;
+    };
+
+    if (currentMonthVacations.length > 0) {
+      container.appendChild(buildVacationRow(curMonthTitle, currentMonthVacations));
+    }
+    if (nextMonthVacations.length > 0) {
+      container.appendChild(buildVacationRow(nextMonthTitle, nextMonthVacations));
+    }
 
     if (window.lucide) window.lucide.createIcons();
   }

@@ -2243,3 +2243,13 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
   border-radius: 4px;
   transform: scale(1.06);
 }
+
+
+/* FÉRIAS EM VERMELHO COM TRAÇO NO MEIO (LINE-THROUGH IGUAL FOLGA) */
+.worker-chip.is-vacation {
+  color: #b91c1c !important;
+  font-weight: 900 !important;
+  text-decoration: line-through !important;
+  text-decoration-color: #b91c1c !important;
+  text-decoration-thickness: 2px !important;
+}
