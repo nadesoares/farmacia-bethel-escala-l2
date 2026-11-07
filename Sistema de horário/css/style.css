@@ -1950,3 +1950,63 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
     font-size: 0.7rem;
   }
 }
+
+
+/* ESTILOS DE FÉRIAS E RODAPÉ DE FÉRIAS */
+.calendar-vacations-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: var(--radius-xs, 8px);
+  font-size: 0.75rem;
+}
+
+.vacation-footer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 800;
+  color: #be123c;
+}
+
+.vacation-footer-label svg {
+  width: 14px;
+  height: 14px;
+  color: #e11d48;
+}
+
+.vacation-pill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  background: #ffffff;
+  border: 1px solid #fda4af;
+  border-radius: 999px;
+  color: #9f1239;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.vacation-pill-next-month {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.6rem;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  color: #92400e;
+  font-weight: 800;
+  font-size: 0.72rem;
+}
+
+.no-vacations-text {
+  color: #64748b;
+  font-style: italic;
+  font-size: 0.73rem;
+}

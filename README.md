@@ -61,7 +61,7 @@ CREATE POLICY "Acesso Total Escalas" ON public.schedules FOR ALL USING (true) WI
 2. Clique em **"Add New..." > "Project"**.
 3. Selecione o repositório **farmacia-bethel-escala**.
 4. Clique em **Deploy**.
-5. Em poucos segundos, seu link público estará no ar (ex: `https://farmacia-bethel-escala.vercel.app`).
+5. Em poucos segundos, seu link público estará no ar (ex: `https://betel2.vercel.app`).
 
 ---
 
