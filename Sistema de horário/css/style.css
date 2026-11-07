@@ -1877,3 +1877,76 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
   }
 }
 
+
+
+/* INDICADOR VISUAL DE ESCALA SALVA NA NUVEM */
+.cloud-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.36rem 0.7rem;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+}
+
+.cloud-sync-badge:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}
+
+.cloud-sync-badge.status-synced {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #047857;
+}
+
+.cloud-sync-badge.status-synced svg {
+  color: #059669;
+}
+
+.cloud-sync-badge.status-syncing {
+  background: #f0f9ff;
+  border: 1px solid #7dd3fc;
+  color: #0369a1;
+}
+
+.cloud-sync-badge.status-syncing svg {
+  color: #0284c7;
+  animation: cloudSpin 1.2s linear infinite;
+}
+
+.cloud-sync-badge.status-empty {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+
+.cloud-sync-badge.status-empty svg {
+  color: #94a3b8;
+}
+
+.cloud-sync-badge.status-error {
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  color: #be123c;
+}
+
+@keyframes cloudSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .cloud-sync-badge {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.7rem;
+  }
+}

@@ -15,8 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   
-  <link rel="stylesheet" href="css/style.css?v=9.0">
-  <link rel="stylesheet" href="css/print.css?v=9.0" media="print">
+  <link rel="stylesheet" href="css/style.css?v=10.0">
+  <link rel="stylesheet" href="css/print.css?v=10.0" media="print">
 </head>
 <body>
 
@@ -66,6 +66,12 @@
             <i data-lucide="clock" class="icon-sm"></i>
             <span id="realtime-clock-text">--:--:--</span>
           </div>
+
+          <!-- INDICADOR VISUAL DE ESCALA SALVA NA NUVEM -->
+          <button type="button" id="cloud-sync-indicator" class="cloud-sync-badge status-empty" title="Clique para sincronizar com a nuvem agora">
+            <i data-lucide="cloud" id="cloud-sync-icon" class="icon-sm"></i>
+            <span id="cloud-sync-text">Sem escala</span>
+          </button>
         </div>
       </div>
 
@@ -698,42 +704,6 @@
     </div>
   </div>
 
-  <!-- MODAL: EQUIPE DO MÊS / GERAR ESCALA -->
-  <div id="modal-month-team" class="modal-overlay hidden" data-no-backdrop-close="true">
-    <div class="modal-box modern-modal" style="max-width: 580px; width: 95%;">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="modal-icon-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-            <i data-lucide="users"></i>
-          </div>
-          <div>
-            <h3 id="month-team-modal-title">Equipe do Mês</h3>
-            <span class="text-xs text-muted">Marque quem vai trabalhar na escala deste mês e clique em 'Gerar Escala'</span>
-          </div>
-        </div>
-        <button class="btn-close-modal" data-modal="modal-month-team"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 1rem 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border-app);">
-          <span id="month-team-count-badge" style="font-size: 0.82rem; font-weight: 700; color: #38bdf8;">0 colaboradores selecionados</span>
-          <div style="display: flex; gap: 0.5rem;">
-            <button type="button" class="btn btn-sm btn-ghost" id="btn-select-all-month-team" style="font-size: 0.76rem; font-weight: 700;">Marcar Todos</button>
-            <button type="button" class="btn btn-sm btn-ghost" id="btn-unselect-all-month-team" style="font-size: 0.76rem; font-weight: 700; color: #f43f5e;">Desmarcar Todos</button>
-          </div>
-        </div>
-        <div id="month-team-checklist-container">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
-      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-        <button type="button" class="btn btn-ghost" data-modal="modal-month-team">Cancelar</button>
-        <button type="button" class="btn btn-emerald" id="btn-save-month-team">
-          <i data-lucide="sparkles"></i> Gerar Escala
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: RELATÓRIO DE FINS DE SEMANA E FOLGAS -->
   <div id="modal-weekend-report" class="modal-overlay hidden" data-no-backdrop-close="true">
     <div class="modal-box modern-modal" style="max-width: 680px; width: 95%;">
@@ -1033,8 +1003,9 @@ window.supabaseManager = new SupabaseManager();
  * STORE.JS - Gerenciamento de Estado e Persistência Local (LocalStorage)
  */
 const STORAGE_KEYS = {
-  EMPLOYEES: 'farmacia_escala_employees_v3',
-  SCHEDULES: 'farmacia_escala_schedules_v19',
+  EMPLOYEES: 'farmacia_escala_employees_v4',
+  SCHEDULES: 'farmacia_escala_schedules_v20',
+  OTHER_STORE_SCHEDULES: 'farmacia_escala_other_schedules_v20',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
   ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
@@ -1084,6 +1055,8 @@ const DEFAULT_EMPLOYEES = [
     prefShift: 'PLANTONISTA',
     plantaoDays: ['SAT', 'SUN'],
     plantaoShift: '2',
+    onCallDays: ['SAT', 'SUN'],
+    onCallShift: '2',
     color: '#f97316',
     status: 'ACTIVE',
     createdAt: new Date().toISOString()
@@ -1095,167 +1068,13 @@ class Store {
     this.init();
   }
 
-  getDefaultAugust2026Schedule() {
-    const days = {
-      // 01 e 02/08: Fim de semana
-      "2026-08-01": { dayNumber: 1, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-08-02": { dayNumber: 2, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 1 (03 a 09/08): Manhã (Matheus + Salete) / Noite (Livia + Natália) - 1ª Sexta (Folga Verde Livia)
-      "2026-08-03": { dayNumber: 3, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-04": { dayNumber: 4, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-05": { dayNumber: 5, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-06": { dayNumber: 6, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-07": { dayNumber: 7, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-08": { dayNumber: 8, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-08-09": { dayNumber: 9, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 2 (10 a 16/08): Manhã (Livia + Natália) / Noite (Matheus + Salete) - 2ª Sexta (Folga Verde Matheus)
-      "2026-08-10": { dayNumber: 10, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-11": { dayNumber: 11, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-12": { dayNumber: 12, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-13": { dayNumber: 13, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-14": { dayNumber: 14, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }] }, { workers: [{ employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-15": { dayNumber: 15, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-08-16": { dayNumber: 16, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 3 (17 a 23/08): Manhã (Matheus + Salete) / Noite (Livia + Natália) - 3ª Sexta (Folga Verde Natália)
-      "2026-08-17": { dayNumber: 17, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-18": { dayNumber: 18, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-19": { dayNumber: 19, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-20": { dayNumber: 20, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-08-21": { dayNumber: 21, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }] },
-      "2026-08-22": { dayNumber: 22, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-08-23": { dayNumber: 23, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 4 (24 a 30/08): Fiel à Imagem Real - Manhã (Livia + Natália) / Noite (Matheus + Salete)
-      "2026-08-24": { dayNumber: 24, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-25": { dayNumber: 25, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-26": { dayNumber: 26, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-27": { dayNumber: 27, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-28": { dayNumber: 28, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-08-29": { dayNumber: 29, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }] },
-      "2026-08-30": { dayNumber: 30, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 5 (31/08): Fiel à Imagem Real - Inversão na Segunda: Manhã (Matheus + Salete) / Noite (Livia + Natália)
-      "2026-08-31": { dayNumber: 31, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] }
-    };
-    return {
-      yearMonth: '2026-08',
-      year: 2026,
-      month: 8,
-      generatedAt: new Date().toISOString(),
-      days: days
-    };
-  }
-
-  getDefaultSeptember2026Schedule() {
-    const days = {
-      // Semana 1 (01 a 06/09) - Ciclo A: Manhã (Matheus + Salete) / Noite (Livia + Natália) - 1ª Sexta (Folga Verde Livia)
-      "2026-09-01": { dayNumber: 1, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-02": { dayNumber: 2, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-03": { dayNumber: 3, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-04": { dayNumber: 4, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-05": { dayNumber: 5, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-09-06": { dayNumber: 6, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 2 (07 a 13/09) - Ciclo B (Cruzamento): Manhã (Livia + Salete) / Noite (Matheus + Natália) - 2ª Sexta (Folga Verde Matheus)
-      "2026-09-07": { dayNumber: 7, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-08": { dayNumber: 8, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-09": { dayNumber: 9, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-10": { dayNumber: 10, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-11": { dayNumber: 11, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-12": { dayNumber: 12, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-09-13": { dayNumber: 13, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 3 (14 a 20/09) - Ciclo B (Inversão): Manhã (Matheus + Natália) / Noite (Livia + Salete) - 3ª Sexta (Folga Verde Salete)
-      "2026-09-14": { dayNumber: 14, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-15": { dayNumber: 15, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-16": { dayNumber: 16, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-17": { dayNumber: 17, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-18": { dayNumber: 18, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'SALETE', color: 'GREEN' }] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }] },
-      "2026-09-19": { dayNumber: 19, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-09-20": { dayNumber: 20, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 4 (21 a 27/09) - Ciclo A (Retorno): Manhã (Livia + Natália) / Noite (Matheus + Salete) - 4ª Sexta (Folga Verde Natália)
-      "2026-09-21": { dayNumber: 21, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-22": { dayNumber: 22, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-23": { dayNumber: 23, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-24": { dayNumber: 24, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-25": { dayNumber: 25, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-09-26": { dayNumber: 26, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-09-27": { dayNumber: 27, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 5 (28 a 30/09) - Ciclo A: Manhã (Matheus + Salete) / Noite (Livia + Natália)
-      "2026-09-28": { dayNumber: 28, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-29": { dayNumber: 29, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-09-30": { dayNumber: 30, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] }
-    };
-    return {
-      yearMonth: '2026-09',
-      year: 2026,
-      month: 9,
-      generatedAt: new Date().toISOString(),
-      days: days
-    };
-  }
-
-  getDefaultOctober2026Schedule() {
-    const days = {
-      // Semana 1 (01 a 04/10) - Continuação da Semana 5 de Setembro (Ciclo A): Manhã (Matheus + Salete) / Noite (Livia + Natália) - 1ª Sexta (Folga Verde Livia)
-      "2026-10-01": { dayNumber: 1, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-02": { dayNumber: 2, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'LIVIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-03": { dayNumber: 3, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-10-04": { dayNumber: 4, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 2 (05 a 11/10) - Ciclo B: Manhã (Livia + Salete) / Noite (Matheus + Natália) - 2ª Sexta (Folga Verde Matheus)
-      "2026-10-05": { dayNumber: 5, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-06": { dayNumber: 6, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-07": { dayNumber: 7, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-08": { dayNumber: 8, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-09": { dayNumber: 9, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'GREEN' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-10": { dayNumber: 10, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-10-11": { dayNumber: 11, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 3 (12 a 18/10) - Ciclo B (Inversão): Manhã (Matheus + Natália) / Noite (Livia + Salete) - 3ª Sexta (Folga Verde Salete)
-      "2026-10-12": { dayNumber: 12, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-13": { dayNumber: 13, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-14": { dayNumber: 14, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-15": { dayNumber: 15, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-16": { dayNumber: 16, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'SALETE', color: 'GREEN' }] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }] },
-      "2026-10-17": { dayNumber: 17, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-      "2026-10-18": { dayNumber: 18, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-
-      // Semana 4 (19 a 25/10) - Ciclo A (Retorno): Manhã (Livia + Natália) / Noite (Matheus + Salete) - 4ª Sexta (Folga Verde Natália)
-      "2026-10-19": { dayNumber: 19, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-20": { dayNumber: 20, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-21": { dayNumber: 21, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-22": { dayNumber: 22, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-23": { dayNumber: 23, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }] }, { workers: [{ employeeName: 'NATÁLIA', color: 'GREEN' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }] },
-      "2026-10-24": { dayNumber: 24, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'NATÁLIA', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'LIVIA', color: 'RED' }] }] },
-      "2026-10-25": { dayNumber: 25, dayOfWeek: 0, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] },
-
-      // Semana 5 (26 a 31/10) - Ciclo A: Manhã (Matheus + Salete) / Noite (Livia + Natália)
-      "2026-10-26": { dayNumber: 26, dayOfWeek: 1, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-27": { dayNumber: 27, dayOfWeek: 2, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-28": { dayNumber: 28, dayOfWeek: 3, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-29": { dayNumber: 29, dayOfWeek: 4, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-30": { dayNumber: 30, dayOfWeek: 5, slots: [{ workers: [{ employeeName: 'MATHEUS', color: 'NORMAL' }, { employeeName: 'SALETE', color: 'NORMAL' }] }, { workers: [] }, { workers: [{ employeeName: 'LIVIA', color: 'NORMAL' }, { employeeName: 'NATÁLIA', color: 'NORMAL' }] }] },
-      "2026-10-31": { dayNumber: 31, dayOfWeek: 6, slots: [{ workers: [{ employeeName: 'SALETE', color: 'RED' }] }, { workers: [{ employeeName: 'CARLOS', color: 'RED' }] }, { workers: [{ employeeName: 'MATHEUS', color: 'RED' }] }] }
-    };
-    return {
-      yearMonth: '2026-10',
-      year: 2026,
-      month: 10,
-      generatedAt: new Date().toISOString(),
-      days: days
-    };
-  }
-
   init() {
-    const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
+    // Limpa chaves antigas de escalas pré-preenchidas para iniciar 100% limpo
+    ['farmacia_escala_schedules_v17', 'farmacia_escala_schedules_v18', 'farmacia_escala_schedules_v19'].forEach(k => {
+      localStorage.removeItem(k);
+    });
 
-    // Se não tiver funcionários salvos ou só tiver dados vazios/da L1, inicializa a equipe L2
+    const l1Names = ['MAURICIO', 'MAURÍCIO', 'LILIAN', 'DJANE'];
     let storedEmps = [];
     try {
       storedEmps = JSON.parse(localStorage.getItem(STORAGE_KEYS.EMPLOYEES) || '[]');
@@ -1263,73 +1082,38 @@ class Store {
       storedEmps = [];
     }
     storedEmps = storedEmps.filter(emp => !l1Names.includes((emp.name || '').trim().toUpperCase()));
+    // Garantir que CARLOS tenha perfil PLANTONISTA para a matriz de 4 balconistas + 1 plantonista
+    storedEmps = storedEmps.map(emp => {
+      if ((emp.name || '').trim().toUpperCase() === 'CARLOS') {
+        return {
+          ...emp,
+          role: emp.role === 'Folguista' ? 'Plantonista' : (emp.role || 'Plantonista'),
+          prefShift: 'PLANTONISTA',
+          plantaoDays: emp.plantaoDays || ['SAT', 'SUN'],
+          plantaoShift: emp.plantaoShift || '2',
+          onCallDays: emp.onCallDays || ['SAT', 'SUN'],
+          onCallShift: emp.onCallShift || '2'
+        };
+      }
+      return emp;
+    });
     if (storedEmps.length === 0) {
       storedEmps = DEFAULT_EMPLOYEES;
     }
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(storedEmps));
 
-    // Inicializa escalas
-    const existingSchedules = this.getAllSchedules();
-    let schedulesModified = false;
-    for (const ym in existingSchedules) {
-      if (existingSchedules[ym]?.days) {
-        for (const dateKey in existingSchedules[ym].days) {
-          const day = existingSchedules[ym].days[dateKey];
-          if (day.slots) {
-            day.slots.forEach(slot => {
-              if (slot.workers && slot.workers.length > 0) {
-                const prevCount = slot.workers.length;
-                slot.workers = slot.workers.filter(w => !l1Names.includes((w.employeeName || '').trim().toUpperCase()));
-                if (slot.workers.length !== prevCount) {
-                  schedulesModified = true;
-                }
-              }
-            });
-          }
-        }
-      }
-    }
-    
-    
-  
-    if (!existingSchedules['2026-10']) {
-      existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
-      schedulesModified = true;
-    }
-    if (!existingSchedules['2026-09']) {
-      existingSchedules['2026-09'] = this.getDefaultSeptember2026Schedule();
-      schedulesModified = true;
-    }
-    if (!existingSchedules['2026-08'] || (existingSchedules['2026-08'].days && !Object.values(existingSchedules['2026-08'].days).some(d => d.slots?.some(s => s.workers?.length > 0)))) {
-      existingSchedules['2026-08'] = this.getDefaultAugust2026Schedule();
-      schedulesModified = true;
-    }
-    if (schedulesModified) {
-      localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
+    if (!localStorage.getItem(STORAGE_KEYS.SCHEDULES)) {
+      localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify({}));
     }
 
-    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234' || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === 'Bd@9998') {
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234') {
       localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
     }
-
-    // Blindagem de Outubro: se inexistente ou sem funcionários preenchidos, restaura escala oficial
-    try {
-      const chkOct = existingSchedules['2026-10'];
-      const chkHasWorkers = chkOct && chkOct.days && Object.values(chkOct.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
-      if (!chkHasWorkers && typeof this.getDefaultOctober2026Schedule === 'function') {
-        existingSchedules['2026-10'] = this.getDefaultOctober2026Schedule();
-        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
-      }
-    } catch(err) { console.warn('Erro na blindagem de outubro:', err); }
   }
 
   resetDefaultEmployees() {
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(DEFAULT_EMPLOYEES));
-    const schedules = {
-      '2026-08': this.getDefaultAugust2026Schedule(),
-      '2026-09': this.getDefaultSeptember2026Schedule()
-    };
-    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify({}));
     window.syncManager?.pushToCloud();
     return DEFAULT_EMPLOYEES;
   }
@@ -1384,6 +1168,7 @@ class Store {
       employees[index].status = 'INACTIVE';
       employees[index].updatedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+      window.syncManager?.pushToCloud();
       if (window.supabaseManager?.isConfigured()) {
         window.supabaseManager.saveEmployees(employees);
       }
@@ -1398,6 +1183,7 @@ class Store {
       employees[index].status = (employees[index].status === 'ACTIVE') ? 'INACTIVE' : 'ACTIVE';
       employees[index].updatedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+      window.syncManager?.pushToCloud();
       if (window.supabaseManager?.isConfigured()) {
         window.supabaseManager.saveEmployees(employees);
       }
@@ -1410,7 +1196,6 @@ class Store {
     if (schedule && Array.isArray(schedule.selectedEmployeeIds) && schedule.selectedEmployeeIds.length > 0) {
       return schedule.selectedEmployeeIds;
     }
-    // Padrão: todos os colaboradores que estiverem ativos no cadastro
     return this.getActiveEmployees().map(e => e.id);
   }
 
@@ -1448,16 +1233,31 @@ class Store {
 
   getMonthSchedule(yearMonthKey) {
     const schedules = this.getAllSchedules();
-    let sch = schedules[yearMonthKey] || null;
-    if (yearMonthKey === '2026-10') {
-      const hasWorkers = sch && sch.days && Object.values(sch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
-      if (!hasWorkers && typeof this.getDefaultOctober2026Schedule === 'function') {
-        sch = this.getDefaultOctober2026Schedule();
-        schedules['2026-10'] = sch;
-        localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
-      }
+    return schedules[yearMonthKey] || null;
+  }
+
+  getSchedule(yearMonthKey) {
+    return this.getMonthSchedule(yearMonthKey);
+  }
+
+  getOtherStoreAllSchedules() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.OTHER_STORE_SCHEDULES);
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
     }
-    return sch;
+  }
+
+  setOtherStoreAllSchedules(schedulesObj) {
+    if (schedulesObj && typeof schedulesObj === 'object') {
+      localStorage.setItem(STORAGE_KEYS.OTHER_STORE_SCHEDULES, JSON.stringify(schedulesObj));
+    }
+  }
+
+  getOtherStoreMonthSchedule(yearMonthKey) {
+    const schedules = this.getOtherStoreAllSchedules();
+    return schedules[yearMonthKey] || null;
   }
 
   saveMonthSchedule(yearMonthKey, scheduleData) {
@@ -1468,6 +1268,7 @@ class Store {
     }
     schedules[yearMonthKey] = scheduleData;
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    window.syncManager?.pushToCloud();
     if (window.supabaseManager?.isConfigured()) {
       window.supabaseManager.saveSchedule(yearMonthKey, scheduleData);
     }
@@ -1491,6 +1292,7 @@ class Store {
     const schedules = this.getAllSchedules();
     delete schedules[yearMonthKey];
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
+    window.syncManager?.pushToCloud();
   }
 
   isAdmin() {
@@ -1556,6 +1358,7 @@ class Store {
     let campaigns = this.getCampaigns();
     campaigns = campaigns.filter(c => c.id !== id);
     localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(campaigns));
+    window.syncManager?.pushToCloud();
   }
 }
 
@@ -2286,6 +2089,9 @@ class CalendarManager {
     document.getElementById('btn-prev-month')?.addEventListener('click', () => this.changeMonth(-1));
     document.getElementById('btn-next-month')?.addEventListener('click', () => this.changeMonth(1));
     document.getElementById('btn-today')?.addEventListener('click', () => this.goToToday());
+    document.getElementById('cloud-sync-indicator')?.addEventListener('click', () => {
+      window.syncManager?.pullFromCloud(false);
+    });
     this.bindCampaignEvents();
 
     const monthPicker = document.getElementById('month-picker');
@@ -2575,32 +2381,87 @@ class CalendarManager {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  openConsolidatedTodayModal() {
+  updateCloudSyncIndicator(scheduleArg) {
+    const badge = document.getElementById('cloud-sync-indicator');
+    const textEl = document.getElementById('cloud-sync-text');
+    const iconEl = document.getElementById('cloud-sync-icon');
+    if (!badge || !textEl) return;
+
+    const yearMonthKey = this.getYearMonthKey();
+    const schedule = scheduleArg !== undefined ? scheduleArg : this.store.getMonthSchedule(yearMonthKey);
+    const hasWorkers = Boolean(
+      schedule &&
+      schedule.days &&
+      Object.values(schedule.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0))
+    );
+
+    const syncState = window.syncManager?.syncState || 'idle';
+    badge.classList.remove('status-synced', 'status-syncing', 'status-empty', 'status-error');
+
+    if (syncState === 'syncing') {
+      badge.classList.add('status-syncing');
+      textEl.textContent = 'Sincronizando...';
+      if (iconEl) iconEl.setAttribute('data-lucide', 'refresh-cw');
+    } else if (syncState === 'error') {
+      badge.classList.add('status-error');
+      textEl.textContent = 'Erro na nuvem';
+      if (iconEl) iconEl.setAttribute('data-lucide', 'cloud-off');
+    } else if (hasWorkers) {
+      badge.classList.add('status-synced');
+      textEl.textContent = 'Salva na nuvem ✓';
+      if (iconEl) iconEl.setAttribute('data-lucide', 'cloud');
+    } else {
+      badge.classList.add('status-empty');
+      textEl.textContent = 'Sem escala';
+      if (iconEl) iconEl.setAttribute('data-lucide', 'cloud');
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderConsolidatedTodayContainers() {
     const today = new Date();
     const tYear = today.getFullYear();
     const tMonth = today.getMonth() + 1;
     const tDate = today.getDate();
     const todayKey = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(tDate).padStart(2, '0')}`;
     const yearMonthKey = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+
+    const localSchedule = this.store.getMonthSchedule(yearMonthKey);
+    const otherSchedule = this.store.getOtherStoreMonthSchedule(yearMonthKey);
+
+    const scheduleL1 = otherSchedule;
+    const scheduleL2 = localSchedule;
+
+    const dayDataL1 = scheduleL1?.days?.[todayKey];
+    const dayDataL2 = scheduleL2?.days?.[todayKey];
+
+    const containerL1 = document.getElementById('consolidated-l1-shifts');
+    if (containerL1) {
+      containerL1.innerHTML = this.renderConsolidatedDayShifts(dayDataL1, 'L1');
+    }
+
+    const containerL2 = document.getElementById('consolidated-l2-shifts');
+    if (containerL2) {
+      containerL2.innerHTML = this.renderConsolidatedDayShifts(dayDataL2, 'L2');
+    }
+  }
+
+  openConsolidatedTodayModal() {
+    const today = new Date();
+    const tYear = today.getFullYear();
+    const tMonth = today.getMonth() + 1;
+    const tDate = today.getDate();
     const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const todayFormatted = `${dayNames[today.getDay()]}, ${String(tDate).padStart(2, '0')} de ${MONTH_NAMES[tMonth - 1]} de ${tYear}`;
 
     const subtitleEl = document.getElementById('consolidated-today-date-subtitle');
     if (subtitleEl) subtitleEl.textContent = todayFormatted;
 
-    // Obter Escala do L2 (Local)
-    const scheduleL2 = this.store.getMonthSchedule(yearMonthKey) || this.store.getSchedule(yearMonthKey);
-    const dayDataL2 = scheduleL2?.days?.[todayKey];
-    const containerL2 = document.getElementById('consolidated-l2-shifts');
-    if (containerL2) {
-      containerL2.innerHTML = this.renderConsolidatedDayShifts(dayDataL2, 'L2');
-    }
+    this.renderConsolidatedTodayContainers();
 
-    // Obter Escala do L1
-    const containerL1 = document.getElementById('consolidated-l1-shifts');
-    if (containerL1) {
-      containerL1.innerHTML = this.renderConsolidatedL1DayShifts(today, todayKey);
-    }
+    // Atualiza em segundo plano da nuvem para garantir dados em tempo real das duas lojas
+    window.syncManager?.pullFromCloud(true);
 
     // Renderizar Banner de Aniversário de Hoje caso haja aniversariantes
     const birthdayBanner = document.getElementById('consolidated-today-birthday-banner');
@@ -2640,7 +2501,8 @@ class CalendarManager {
   }
 
   renderConsolidatedDayShifts(dayData, storeName) {
-    if (!dayData || !dayData.slots || dayData.slots.length === 0) {
+    const hasAnyWorker = dayData && dayData.slots && dayData.slots.some(s => (s.workers || []).length > 0);
+    if (!hasAnyWorker) {
       return '<p style="color: #64748b; margin: 0.5rem 0; font-style: italic;">Nenhum horário registrado para esta data.</p>';
     }
 
@@ -2677,41 +2539,24 @@ class CalendarManager {
     return html;
   }
 
-  renderConsolidatedL1DayShifts(todayDate, dateKey) {
-    const dayOfWeek = todayDate.getDay();
-    let l1Html = '';
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      l1Html = `
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">Plantão Fim de Semana:</strong>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
-            <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
-            <span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>
-            <span class="worker-chip color-red" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
-          </div>
-        </div>
-      `;
-    } else {
-      l1Html = `
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">1º Turno (Manhã):</strong>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
-            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">LILIAN</span>
-          </div>
-        </div>
-        <div style="background: #ffffff; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-          <strong style="font-size: 0.76rem; color: #0f172a; display: block; margin-bottom: 3px;">3º Turno (Noite):</strong>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
-            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">DJANE</span>
-            <span class="slot-slash" style="color: #64748b; font-weight: 700; margin: 0 4px; align-self: center;">/</span>
-            <span class="worker-chip color-normal" style="font-size: 0.76rem; padding: 2px 7px;">MAURÍCIO</span>
-          </div>
-        </div>
-      `;
+  formatDayShiftsForWhatsApp(dayData) {
+    const hasAnyWorker = dayData && dayData.slots && dayData.slots.some(s => (s.workers || []).length > 0);
+    if (!hasAnyWorker) {
+      return '  • Nenhum horário registrado para esta data\n';
     }
-
-    return l1Html;
+    const shiftLabels = ['1º Turno (Manhã)', '2º Turno (Intermediário)', '3º Turno (Noite)'];
+    let text = '';
+    dayData.slots.forEach((s, idx) => {
+      const workers = s.workers || [];
+      if (workers.length === 0) {
+        if (idx === 1) return; // Omitir 2º turno vazio no WhatsApp
+        text += `  • *${shiftLabels[idx]}*: Sem escala\n`;
+      } else {
+        const names = workers.map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(' / ');
+        text += `  • *${shiftLabels[idx]}*: ${names}\n`;
+      }
+    });
+    return text;
   }
 
   shareTodayWhatsApp() {
@@ -2724,25 +2569,14 @@ class CalendarManager {
     const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const todayFormatted = `${dayNames[today.getDay()]}, ${String(tDate).padStart(2, '0')}/${String(tMonth).padStart(2, '0')}/${tYear}`;
 
-    const schedule = this.store.getMonthSchedule(yearMonthKey) || this.store.getSchedule(yearMonthKey);
-    const dayData = schedule?.days?.[todayKey];
+    const localSchedule = this.store.getMonthSchedule(yearMonthKey);
+    const otherSchedule = this.store.getOtherStoreMonthSchedule(yearMonthKey);
 
-    let l2Text = '';
-    if (dayData && dayData.slots) {
-      const shiftLabels = ['1º Turno (Manhã)', '2º Turno (Intermediário)', '3º Turno (Noite)'];
-      dayData.slots.forEach((s, idx) => {
-        const workers = s.workers || [];
-        if (workers.length === 0) {
-          if (idx === 1) return; // Omitir 2º turno vazio no WhatsApp
-          l2Text += `  • *${shiftLabels[idx]}*: Sem escala\n`;
-        } else {
-          const names = workers.map(w => w.employeeName + (w.color === 'GREEN' ? ' (Folga)' : '')).join(' / ');
-          l2Text += `  • *${shiftLabels[idx]}*: ${names}\n`;
-        }
-      });
-    } else {
-      l2Text = '  • Escala em aberto\n';
-    }
+    const scheduleL1 = otherSchedule;
+    const scheduleL2 = localSchedule;
+
+    const l1Text = this.formatDayShiftsForWhatsApp(scheduleL1?.days?.[todayKey]);
+    const l2Text = this.formatDayShiftsForWhatsApp(scheduleL2?.days?.[todayKey]);
 
     const todayBirthdays = this.checkTodayBirthdays();
     let bText = '';
@@ -2751,7 +2585,7 @@ class CalendarManager {
       bText = `\n🎉🎂 *Aniversariante(s) de Hoje:* ${bNames}! Parabéns! 🎈\n`;
     }
 
-    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n${bText}\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n*🏪 BETHEL LOJA 1:*\n  • *Manhã*: LILIAN\n  • *Noite*: DJANE / MAURÍCIO\n\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
+    const message = `*💊 FARMÁCIA BETHEL - ESCALA DE HOJE*\n📅 ${todayFormatted}\n${bText}\n*🏪 BETHEL LOJA 1:*\n${l1Text}\n*🏪 BETHEL LOJA 2:*\n${l2Text}\n_Acompanhe ao vivo em:_\nhttps://farmacia-bethel-escala-l2.vercel.app`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
@@ -2808,6 +2642,7 @@ class CalendarManager {
     this.renderHolidaysFooter();
     this.renderCampaignsFooter();
     this.renderBirthdaysFooter();
+    this.updateCloudSyncIndicator(schedule);
 
     // Disparar confetes em tela cheia na primeira abertura se hoje houver aniversariante
     if (!this.birthdayCelebrated) {
@@ -4759,13 +4594,19 @@ class SyncManager {
   constructor(storeKey) {
     this.storeKey = storeKey; // 'loja1' ou 'loja2'
     this.isSyncing = false;
+    this.syncState = 'idle';
     this.debounceTimer = null;
     this.initAutoSync();
   }
 
+  setSyncState(state) {
+    this.syncState = state;
+    window.calendarManager?.updateCloudSyncIndicator();
+  }
+
   initAutoSync() {
     // Sincroniza ao abrir a página
-    setTimeout(() => this.pullFromCloud(), 400);
+    setTimeout(() => this.pullFromCloud(true), 250);
 
     // Sincroniza ao focar ou reabrir a aba do navegador
     document.addEventListener('visibilitychange', () => {
@@ -4786,33 +4627,36 @@ class SyncManager {
   async pullFromCloud(silent = false) {
     if (this.isSyncing) return;
     this.isSyncing = true;
+    if (!silent) this.setSyncState('syncing');
     try {
-      const res = await fetch('/api/sync?store=' + this.storeKey + '&t=' + Date.now());
-      if (!res.ok) { this.isSyncing = false; return; }
+      const res = await fetch('/api/sync?store=' + this.storeKey + '&t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) {
+        this.setSyncState('error');
+        this.isSyncing = false;
+        return;
+      }
       const json = await res.json();
-      if (!json.success || !json.data) { this.isSyncing = false; return; }
+      if (!json.success || !json.data) {
+        this.setSyncState('idle');
+        this.isSyncing = false;
+        return;
+      }
 
       const cloud = json.data;
       let hasUpdate = false;
 
-      // 1. Escalas
-      if (cloud.schedules && typeof cloud.schedules === 'object' && Object.keys(cloud.schedules).length > 0) {
+      // 1. Escalas da loja atual (suporta tanto novas escalas quanto exclusão/reset)
+      if (cloud.schedules && typeof cloud.schedules === 'object') {
         const localSchedules = window.store?.getAllSchedules() || {};
-        let schedulesChanged = false;
-        for (const ym in cloud.schedules) {
-          const cSch = cloud.schedules[ym];
-          const lSch = localSchedules[ym];
-          const lHasWorkers = lSch && lSch.days && Object.values(lSch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
-          const cHasWorkers = cSch && cSch.days && Object.values(cSch.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0));
-          if (!lSch || (!lHasWorkers && cHasWorkers) || JSON.stringify(lSch) !== JSON.stringify(cSch)) {
-            localSchedules[ym] = cSch;
-            schedulesChanged = true;
-          }
-        }
-        if (schedulesChanged) {
-          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(localSchedules));
+        if (JSON.stringify(localSchedules) !== JSON.stringify(cloud.schedules)) {
+          localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(cloud.schedules));
           hasUpdate = true;
         }
+      }
+
+      // 1b. Escalas da outra filial (para o modal Plantão de Hoje e WhatsApp em tempo real)
+      if (json.otherData && json.otherData.schedules && typeof json.otherData.schedules === 'object') {
+        window.store?.setOtherStoreAllSchedules(json.otherData.schedules);
       }
 
       // 2. Funcionários
@@ -4824,8 +4668,8 @@ class SyncManager {
         }
       }
 
-      // 3. Campanhas / Ações da Farmácia
-      if (Array.isArray(cloud.campaigns) && cloud.campaigns.length > 0) {
+      // 3. Campanhas / Ações da Farmácia (suporta inclusive quando todas são removidas)
+      if (Array.isArray(cloud.campaigns)) {
         const localCamps = (typeof window.store?.getCampaigns === 'function') ? window.store.getCampaigns() : [];
         if (JSON.stringify(localCamps) !== JSON.stringify(cloud.campaigns)) {
           localStorage.setItem(STORAGE_KEYS.CAMPAIGNS, JSON.stringify(cloud.campaigns));
@@ -4833,15 +4677,28 @@ class SyncManager {
         }
       }
 
+      this.setSyncState('synced');
+
       if (hasUpdate) {
         window.calendarManager?.render();
         window.employeeManager?.render();
-        if (!silent) {
-          window.app?.showToast('Escala atualizada em tempo real ✓', 'success');
-        }
+      } else {
+        window.calendarManager?.updateCloudSyncIndicator();
+      }
+
+      // Se o modal Plantão de Hoje estiver aberto, atualiza os cards das duas lojas
+      const consolidatedModal = document.getElementById('modal-consolidated-today');
+      if (consolidatedModal && !consolidatedModal.classList.contains('hidden')) {
+        window.calendarManager?.renderConsolidatedTodayContainers();
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      if (!silent) {
+        window.app?.showToast('Sincronizado com a nuvem ✓', 'success');
       }
     } catch (e) {
       console.warn('[SyncManager] Falha ao sincronizar nuvem:', e);
+      this.setSyncState('error');
     } finally {
       this.isSyncing = false;
     }
@@ -4849,6 +4706,7 @@ class SyncManager {
 
   pushToCloud() {
     clearTimeout(this.debounceTimer);
+    this.setSyncState('syncing');
     this.debounceTimer = setTimeout(async () => {
       try {
         const payload = {
@@ -4865,12 +4723,16 @@ class SyncManager {
         });
 
         if (res.ok) {
+          this.setSyncState('synced');
           window.app?.showToast('Escala sincronizada na nuvem ✓', 'success');
+        } else {
+          this.setSyncState('error');
         }
       } catch (e) {
         console.warn('[SyncManager] Erro no envio cloud:', e);
+        this.setSyncState('error');
       }
-    }, 600);
+    }, 350);
   }
 }
 

@@ -3,6 +3,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -15,12 +16,14 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const store = (req.query.store || 'loja1').toLowerCase();
+      const store = (req.query.store || 'loja2').toLowerCase();
+      const otherStore = store === 'loja1' ? 'loja2' : 'loja1';
       const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
         headers: {
           'Authorization': `Bearer ${GITHUB_TOKEN}`,
           'User-Agent': 'FarmaciaBethel-Sync',
-          'Accept': 'application/vnd.github.v3+json'
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache'
         }
       });
 
@@ -33,20 +36,29 @@ export default async function handler(req, res) {
       let parsed = {};
       try { parsed = JSON.parse(content); } catch(e) {}
 
-      const storeData = parsed[store] || null;
-      return res.status(200).json({ success: true, store: store, data: storeData, updatedAt: gistData.updated_at });
+      const storeData = parsed[store] || { schedules: {}, employees: [], campaigns: [] };
+      const otherStoreData = parsed[otherStore] || { schedules: {}, employees: [], campaigns: [] };
+      return res.status(200).json({
+        success: true,
+        store: store,
+        data: storeData,
+        otherStore: otherStore,
+        otherData: otherStoreData,
+        updatedAt: gistData.updated_at
+      });
     }
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const { store, schedules, employees, campaigns } = body;
-      const storeKey = (store || 'loja1').toLowerCase();
+      const storeKey = (store || 'loja2').toLowerCase();
 
       const getResp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
         headers: {
           'Authorization': `Bearer ${GITHUB_TOKEN}`,
           'User-Agent': 'FarmaciaBethel-Sync',
-          'Accept': 'application/vnd.github.v3+json'
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache'
         }
       });
 
@@ -57,10 +69,17 @@ export default async function handler(req, res) {
         try { fullDb = JSON.parse(currentContent); } catch(e) {}
       }
 
+      const prevStore = fullDb[storeKey] || {};
       fullDb[storeKey] = {
-        schedules: schedules || (fullDb[storeKey] ? fullDb[storeKey].schedules : {}) || {},
-        employees: employees || (fullDb[storeKey] ? fullDb[storeKey].employees : []) || [],
-        campaigns: campaigns || (fullDb[storeKey] ? fullDb[storeKey].campaigns : []) || [],
+        schedules: (schedules !== undefined && schedules !== null && typeof schedules === 'object')
+          ? schedules
+          : (prevStore.schedules || {}),
+        employees: Array.isArray(employees)
+          ? employees
+          : (prevStore.employees || []),
+        campaigns: Array.isArray(campaigns)
+          ? campaigns
+          : (prevStore.campaigns || []),
         updatedAt: new Date().toISOString()
       };
 
@@ -85,7 +104,7 @@ export default async function handler(req, res) {
         return res.status(patchResp.status).json({ error: 'Erro ao salvar na nuvem' });
       }
 
-      return res.status(200).json({ success: true, store: storeKey, updatedAt: new Date().toISOString() });
+      return res.status(200).json({ success: true, store: storeKey, updatedAt: fullDb[storeKey].updatedAt });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
