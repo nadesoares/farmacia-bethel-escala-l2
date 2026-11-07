@@ -2233,3 +2233,13 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
 .vac-selection-banner.hidden {
   display: none !important;
 }
+
+
+/* DESTAQUE AO ARRASTAR POR CIMA DO NOME DE OUTRO COLABORADOR (SUBSTITUIR) */
+.worker-chip.chip-drag-replace-target {
+  outline: 2px solid #dc2626 !important;
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-radius: 4px;
+  transform: scale(1.06);
+}

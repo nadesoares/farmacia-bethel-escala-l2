@@ -3320,48 +3320,83 @@ class CalendarManager {
       chip.addEventListener('dragend', (e) => {
         e.stopPropagation();
         chip.classList.remove('chip-dragging');
-        document.querySelectorAll('.slot-item').forEach(s => s.classList.remove('slot-drag-hover'));
+        document.querySelectorAll('.slot-item').forEach(s => s.classList.remove('slot-drag-hover', 'slot-drag-group'));
+        document.querySelectorAll('.worker-chip').forEach(c => c.classList.remove('chip-drag-replace-target'));
         setTimeout(() => { this.draggedWorker = null; }, 50);
       });
     });
 
-    // 2. Soltar no Turno (Slot)
+    // Soltar no Turno (Slot):
+    // - Se arrastar em cima do nome de outra pessoa (.worker-chip) -> SUBSTITUI / TROCA com aquela pessoa.
+    // - Se arrastar para uma área vaga dentro do turno -> ADICIONA no turno sem precisar apertar Shift.
     slotEl.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
-      
-      if (e.shiftKey) {
-        slotEl.classList.add('slot-drag-group');
-        slotEl.classList.remove('slot-drag-hover');
-      } else {
+
+      const targetChip = e.target.closest('.worker-chip');
+      slotEl.querySelectorAll('.worker-chip').forEach(c => {
+        c.classList.toggle('chip-drag-replace-target', c === targetChip && !c.classList.contains('chip-dragging'));
+      });
+
+      if (targetChip && !targetChip.classList.contains('chip-dragging')) {
         slotEl.classList.add('slot-drag-hover');
         slotEl.classList.remove('slot-drag-group');
+      } else {
+        slotEl.classList.add('slot-drag-group');
+        slotEl.classList.remove('slot-drag-hover');
       }
     });
 
     slotEl.addEventListener('dragleave', (e) => {
       e.stopPropagation();
-      slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+      if (!slotEl.contains(e.relatedTarget)) {
+        slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+        slotEl.querySelectorAll('.worker-chip').forEach(c => c.classList.remove('chip-drag-replace-target'));
+      }
     });
 
     slotEl.addEventListener('drop', (e) => {
       e.preventDefault();
       e.stopPropagation();
       slotEl.classList.remove('slot-drag-hover', 'slot-drag-group');
+      slotEl.querySelectorAll('.worker-chip').forEach(c => c.classList.remove('chip-drag-replace-target'));
 
       if (!this.draggedWorker) return;
 
       this.hasJustDragged = true;
       const targetDateKey = slotEl.dataset.dateKey;
       const targetTurnIndex = parseInt(slotEl.dataset.turnIndex, 10);
-      const isGrouping = !!e.shiftKey;
 
-      this.moveOrSwapWorker(this.draggedWorker, targetDateKey, targetTurnIndex, isGrouping);
+      const targetChip = e.target.closest('.worker-chip');
+      const isDroppingOnPerson = Boolean(targetChip && !targetChip.classList.contains('chip-dragging'));
+      const replaceWorkerIndex = isDroppingOnPerson ? parseInt(targetChip.dataset.widx, 10) : -1;
+      const isGrouping = !isDroppingOnPerson;
+
+      this.moveOrSwapWorker(this.draggedWorker, targetDateKey, targetTurnIndex, isGrouping, replaceWorkerIndex);
     });
   }
 
-  moveOrSwapWorker(source, targetDateKey, targetTurnIndex, isGrouping = false) {
+  applyAutoFridayShiftColor(workerObj, dateKey, turnIndex) {
+    if (!workerObj || !dateKey) return;
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dayOfWeek = new Date(y, m - 1, d).getDay();
+    const empNameUpper = (workerObj.employeeName || '').trim().toUpperCase();
+    const emp = (this.store.getEmployees() || []).find(e => (e.name || '').trim().toUpperCase() === empNameUpper);
+    const isPlantonista = Boolean(emp && (emp.prefShift === 'PLANTONISTA' || emp.role === 'Plantonista'));
+
+    if (dayOfWeek === 5 && turnIndex === 1) {
+      // Sempre que arrastar para a sexta-feira no 2º Turno (tarde), se não for plantonista, vira Folga (GREEN) automaticamente
+      if (!isPlantonista) {
+        workerObj.color = 'GREEN';
+      }
+    } else if (workerObj.color === 'GREEN' && (turnIndex === 0 || turnIndex === 2)) {
+      // Se estava de folga (GREEN) e foi arrastado para o 1º ou 3º turno, vira NORMAL (ou RED se fim de semana) automaticamente
+      workerObj.color = (dayOfWeek === 0 || dayOfWeek === 6) ? 'RED' : 'NORMAL';
+    }
+  }
+
+  moveOrSwapWorker(source, targetDateKey, targetTurnIndex, isGrouping = false, replaceWorkerIndex = -1) {
     const yearMonthKey = this.getYearMonthKey();
     let schedule = this.store.getMonthSchedule(yearMonthKey);
     if (!schedule || !schedule.days) return;
@@ -3380,23 +3415,29 @@ class CalendarManager {
 
     const movedWorker = sourceWorkers.splice(source.workerIndex, 1)[0] || { employeeName: source.employeeName, color: source.color || 'NORMAL' };
 
-    if (isGrouping) {
-      // AGRUPAR / JUNTAR (Com Shift)
+    // Aplica regra automática de cor na sexta-feira (2º turno = Folga se não for plantonista; 1º/3º turno = Normal)
+    this.applyAutoFridayShiftColor(movedWorker, targetDateKey, targetTurnIndex);
+
+    if (isGrouping || targetWorkers.length === 0) {
+      // ÁREA VAGA DENTRO DO TURNO -> ADICIONA SEM PRECISAR DE SHIFT
       const alreadyInTarget = targetWorkers.some(w => w.employeeName === movedWorker.employeeName);
       if (!alreadyInTarget) {
         targetWorkers.push(movedWorker);
       }
-      window.app?.showToast(`➕ ${movedWorker.employeeName} agrupado(a) no ${targetTurnIndex + 1}º Turno!`, 'success');
+      const msg = targetWorkers.length > 1
+        ? `➕ ${movedWorker.employeeName} adicionado(a) ao ${targetTurnIndex + 1}º Turno!`
+        : `${movedWorker.employeeName} movido(a) para o ${targetTurnIndex + 1}º Turno!`;
+      window.app?.showToast(msg, 'success');
     } else {
-      // TROCA (Padrão) OU MOVER SE VAZIO
-      if (targetWorkers.length > 0) {
-        const targetWorker = targetWorkers.shift();
-        targetWorkers.push(movedWorker);
-        sourceWorkers.push(targetWorker);
-        window.app?.showToast(`⇄ Invertido: ${movedWorker.employeeName} ⇄ ${targetWorker.employeeName}!`, 'success');
-      } else {
-        targetWorkers.push(movedWorker);
-        window.app?.showToast(`${movedWorker.employeeName} movido(a) para o ${targetTurnIndex + 1}º Turno!`, 'success');
+      // SOLTOU EM CIMA DO NOME DE OUTRA PESSOA -> SUBSTITUI / TROCA COM AQUELA PESSOA
+      const idxToReplace = (replaceWorkerIndex >= 0 && replaceWorkerIndex < targetWorkers.length) ? replaceWorkerIndex : 0;
+      const [targetWorker] = targetWorkers.splice(idxToReplace, 1, movedWorker);
+      if (targetWorker) {
+        this.applyAutoFridayShiftColor(targetWorker, source.dateKey, source.turnIndex);
+        if (!sourceWorkers.some(w => w.employeeName === targetWorker.employeeName)) {
+          sourceWorkers.push(targetWorker);
+        }
+        window.app?.showToast(`⇄ Substituído: ${movedWorker.employeeName} ⇄ ${targetWorker.employeeName}!`, 'success');
       }
     }
 
