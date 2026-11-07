@@ -1257,6 +1257,31 @@ class Store {
     if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
       localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
     }
+
+    // Reconhece passe de 2h vindo da alternância entre filiais (L1 <-> L2) no mesmo PC
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminUntilParam = Number(urlParams.get('admin_until') || 0);
+      const adminActiveParam = urlParams.get('admin_active');
+      if (adminUntilParam && adminUntilParam > Date.now() && adminUntilParam <= Date.now() + (2.5 * 60 * 60 * 1000)) {
+        localStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, String(adminUntilParam));
+        sessionStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, String(adminUntilParam));
+        if (adminActiveParam === '0') {
+          sessionStorage.setItem('farmacia_admin_manual_exit', 'true');
+        } else {
+          sessionStorage.removeItem('farmacia_admin_manual_exit');
+          localStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+          sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+        }
+      }
+      if (urlParams.has('admin_until') || urlParams.has('admin_active')) {
+        urlParams.delete('admin_until');
+        urlParams.delete('admin_active');
+        const cleanSearch = urlParams.toString();
+        const cleanUrl = window.location.pathname + (cleanSearch ? '?' + cleanSearch : '') + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch (e) {}
   }
 
   resetDefaultEmployees() {
@@ -1446,22 +1471,54 @@ class Store {
     }
   }
 
-  isAdmin() {
-    const hasSession = sessionStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true' ||
-                       localStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true';
-    if (!hasSession) return false;
-
-    const expiresAt = Number(
+  getAdminExpiresAt() {
+    return Number(
       localStorage.getItem(STORAGE_KEYS.ADMIN_EXPIRES_AT) ||
       sessionStorage.getItem(STORAGE_KEYS.ADMIN_EXPIRES_AT) ||
       0
     );
+  }
+
+  hasValidTwoHourPass() {
+    const expiresAt = this.getAdminExpiresAt();
+    if (!expiresAt || Date.now() > expiresAt) {
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+      sessionStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+      return false;
+    }
+    return true;
+  }
+
+  resumeAdminFromPass() {
+    if (!this.hasValidTwoHourPass()) return false;
+    const expiresAt = String(this.getAdminExpiresAt());
+    sessionStorage.removeItem('farmacia_admin_manual_exit');
+    sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+    sessionStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, expiresAt);
+    localStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+    localStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, expiresAt);
+    window.syncManager?.syncAdminPassToCloud();
+    return true;
+  }
+
+  isAdmin() {
+    const expiresAt = this.getAdminExpiresAt();
 
     // Expiração obrigatória após 2 horas
     if (!expiresAt || Date.now() > expiresAt) {
-      this.logoutAdmin();
+      this.logoutAdmin(true);
       return false;
     }
+
+    // Se o usuário clicou manualmente em "Sair do Admin" nesta aba, fica na visão pública
+    // (mas preserva o passe de 2h para reentrar com 1 clique sem pedir senha)
+    if (sessionStorage.getItem('farmacia_admin_manual_exit') === 'true') {
+      return false;
+    }
+
+    // Se há passe válido de 2h neste aparelho, mantém a sessão ativa automaticamente
+    localStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+    sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
     return true;
   }
 
@@ -1472,6 +1529,7 @@ class Store {
       const twoHoursMs = 2 * 60 * 60 * 1000;
       const expiresAt = String(Date.now() + twoHoursMs);
 
+      sessionStorage.removeItem('farmacia_admin_manual_exit');
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, expiresAt);
 
@@ -1486,16 +1544,22 @@ class Store {
       if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
         localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
       }
+      window.syncManager?.syncAdminPassToCloud();
       return true;
     }
     return false;
   }
 
-  logoutAdmin() {
+  logoutAdmin(clearTwoHourPass = false) {
     sessionStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
-    sessionStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
     localStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
-    localStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+    if (clearTwoHourPass) {
+      sessionStorage.removeItem('farmacia_admin_manual_exit');
+      sessionStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+    } else {
+      sessionStorage.setItem('farmacia_admin_manual_exit', 'true');
+    }
   }
 
   setAdminPin(newPin) {
@@ -5495,33 +5559,147 @@ class EmployeeManager {
 
     if (approachingList.length === 0) return;
 
-    const bodyEl = document.getElementById('admin-vacation-alert-body');
-    if (!bodyEl) return;
+    // Remove card anterior se existir
+    const existingCard = document.getElementById('admin-vacation-floating-card');
+    if (existingCard) {
+      if (existingCard._timerInterval) clearInterval(existingCard._timerInterval);
+      existingCard.remove();
+    }
 
-    bodyEl.innerHTML = `
-      <div style="padding: 0.7rem 0.85rem; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; color: #92400e; font-size: 0.8rem; font-weight: 600;">
-        ⚠️ <strong>Atenção Admin:</strong> Colaborador(es) a <strong>2 meses ou menos</strong> do novo período aquisitivo de férias:
-      </div>
-    ` + approachingList.map(({ emp, summary, monthName }) => {
+    const card = document.createElement('div');
+    card.id = 'admin-vacation-floating-card';
+    card.className = 'no-print';
+    card.style.cssText = [
+      'position: fixed',
+      'right: 1.25rem',
+      'bottom: 1.25rem',
+      'z-index: 9850',
+      'width: 370px',
+      'max-width: calc(100vw - 1.5rem)',
+      'background: #ffffff',
+      'border: 1px solid #fecdd3',
+      'border-radius: 14px',
+      'box-shadow: 0 18px 40px -10px rgba(15, 23, 42, 0.28), 0 4px 12px rgba(225, 29, 72, 0.12)',
+      'overflow: hidden',
+      'font-family: inherit',
+      'transition: opacity 0.25s ease, transform 0.25s ease'
+    ].join('; ');
+
+    const itemsHtml = approachingList.map(({ emp, summary, monthName }) => {
       const mText = summary.monthsUntilNextRightMonth === 1 ? 'Falta 1 mês' : `Faltam ${summary.monthsUntilNextRightMonth} meses`;
       const pendingInfo = summary.pendingDays > 0
         ? `<span style="color: #be123c; font-weight: 800;">Ainda faltam ${summary.pendingDays} dias de férias pendentes do ciclo atual!</span>`
         : `<span style="color: #15803d; font-weight: 700;">Ciclo atual já quitado (30/30 dias).</span>`;
       return `
-        <div style="padding: 0.75rem 0.9rem; background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #e11d48; border-radius: 8px; display: flex; flex-direction: column; gap: 0.25rem;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-            <strong style="font-size: 0.9rem; color: #0f172a;">🏖️ ${emp.name}</strong>
-            <span style="font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ffe4e6; color: #be123c;">${mText} (Direito em ${monthName})</span>
+        <div style="padding: 0.55rem 0.7rem; background: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; display: flex; flex-direction: column; gap: 0.2rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-wrap: wrap;">
+            <strong style="font-size: 0.82rem; color: #0f172a;">🏖️ ${emp.name}</strong>
+            <span style="font-size: 0.68rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: #ffe4e6; color: #be123c;">${mText} (Direito em ${monthName})</span>
           </div>
-          <div style="font-size: 0.78rem; color: #475569;">
+          <div style="font-size: 0.73rem; color: #475569;">
             ${pendingInfo}
           </div>
         </div>
       `;
     }).join('');
 
-    window.app?.openModal('modal-admin-vacation-alert');
+    card.innerHTML = `
+      <div style="height: 4px; width: 100%; background: #ffe4e6; overflow: hidden;">
+        <div id="admin-vac-card-progress" style="height: 100%; width: 100%; background: linear-gradient(90deg, #e11d48, #f43f5e); transition: width 0.08s linear;"></div>
+      </div>
+      <div style="padding: 0.8rem 0.95rem; display: flex; flex-direction: column; gap: 0.6rem;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 30px; height: 30px; border-radius: 8px; background: rgba(225, 29, 72, 0.12); color: #e11d48; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.95rem;">
+              🏖️
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <h4 style="margin: 0; font-size: 0.86rem; font-weight: 800; color: #0f172a;">Aviso de Férias da Equipe</h4>
+                <span id="admin-vac-card-countdown" style="font-size: 0.66rem; font-weight: 800; color: #be123c; background: #ffe4e6; padding: 1px 6px; border-radius: 999px;">10s</span>
+              </div>
+              <span style="font-size: 0.7rem; color: #64748b; display: block;">A 2 meses ou menos do novo período aquisitivo</span>
+            </div>
+          </div>
+          <button type="button" id="btn-close-vac-floating-card" title="Fechar aviso" style="background: #f1f5f9; border: none; color: #475569; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; flex-shrink: 0;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 210px; overflow-y: auto;">
+          ${itemsHtml}
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.2rem;">
+          <span id="admin-vac-card-hint" style="font-size: 0.67rem; color: #94a3b8; font-weight: 600;">Passe o mouse para pausar</span>
+          <button type="button" id="btn-open-team-from-vac-floating" class="btn btn-emerald" style="height: 32px; padding: 0 0.75rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <i data-lucide="users" style="width: 13px; height: 13px;"></i>
+            <span>Abrir Cadastro da Equipe</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(card);
     if (window.lucide) window.lucide.createIcons();
+
+    const totalMs = 10000;
+    let remainingMs = totalMs;
+    let isPaused = false;
+    let lastTick = performance.now();
+
+    const progressEl = card.querySelector('#admin-vac-card-progress');
+    const countdownEl = card.querySelector('#admin-vac-card-countdown');
+    const hintEl = card.querySelector('#admin-vac-card-hint');
+
+    const closeCard = () => {
+      if (card._timerInterval) {
+        clearInterval(card._timerInterval);
+        card._timerInterval = null;
+      }
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(12px)';
+      setTimeout(() => card.remove(), 240);
+    };
+
+    card._timerInterval = setInterval(() => {
+      const now = performance.now();
+      if (!isPaused) {
+        remainingMs -= (now - lastTick);
+        if (remainingMs <= 0) {
+          remainingMs = 0;
+          if (progressEl) progressEl.style.width = '0%';
+          if (countdownEl) countdownEl.textContent = '0s';
+          closeCard();
+          return;
+        }
+        const pct = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
+        if (progressEl) progressEl.style.width = pct + '%';
+        if (countdownEl) countdownEl.textContent = Math.ceil(remainingMs / 1000) + 's';
+      }
+      lastTick = now;
+    }, 60);
+
+    card.addEventListener('mouseenter', () => {
+      isPaused = true;
+      if (countdownEl) countdownEl.textContent = 'Pausado';
+      if (hintEl) hintEl.textContent = '⏸ Contagem pausada';
+    });
+
+    card.addEventListener('mouseleave', () => {
+      isPaused = false;
+      lastTick = performance.now();
+      if (countdownEl) countdownEl.textContent = Math.ceil(remainingMs / 1000) + 's';
+      if (hintEl) hintEl.textContent = 'Passe o mouse para pausar';
+    });
+
+    card.querySelector('#btn-close-vac-floating-card')?.addEventListener('click', () => {
+      closeCard();
+    });
+
+    card.querySelector('#btn-open-team-from-vac-floating')?.addEventListener('click', () => {
+      closeCard();
+      this.render();
+      window.app?.openModal('modal-team-manager');
+    });
   }
 
   render() {
@@ -5664,6 +5842,20 @@ class SyncManager {
     window.calendarManager?.updateCloudSyncIndicator();
   }
 
+  async syncAdminPassToCloud() {
+    try {
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store: this.storeKey,
+          adminUntil: (window.store?.getAdminExpiresAt ? window.store.getAdminExpiresAt() : 0),
+          adminActive: Boolean(window.store?.isAdmin && window.store.isAdmin())
+        })
+      });
+    } catch (e) {}
+  }
+
   initAutoSync() {
     // Sincroniza ao abrir a página
     setTimeout(() => this.pullFromCloud(true), 250);
@@ -5715,6 +5907,20 @@ class SyncManager {
 
       const cloud = json.data;
       let hasUpdate = false;
+
+      // Reconhece o passe de 2h deste mesmo PC vindo da nuvem (ex: logou na L1 e abriu a L2 pelo favorito)
+      if (json.pcAdminUntil && Number(json.pcAdminUntil) > Date.now()) {
+        const currentExp = window.store?.getAdminExpiresAt ? window.store.getAdminExpiresAt() : 0;
+        if (Number(json.pcAdminUntil) > currentExp) {
+          localStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, String(json.pcAdminUntil));
+          sessionStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, String(json.pcAdminUntil));
+          if (sessionStorage.getItem('farmacia_admin_manual_exit') !== 'true') {
+            localStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+            sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+            window.app?.updateAdminUI();
+          }
+        }
+      }
 
       // 1. Escalas da loja atual (suporta tanto novas escalas quanto exclusão/reset)
       if (cloud.schedules && typeof cloud.schedules === 'object') {
@@ -5795,7 +6001,9 @@ class SyncManager {
           store: this.storeKey,
           schedules: window.store?.getAllSchedules() || {},
           employees: window.store?.getEmployees() || [],
-          campaigns: (typeof window.store?.getCampaigns === 'function') ? window.store.getCampaigns() : []
+          campaigns: (typeof window.store?.getCampaigns === 'function') ? window.store.getCampaigns() : [],
+          adminUntil: (window.store?.getAdminExpiresAt ? window.store.getAdminExpiresAt() : 0),
+          adminActive: Boolean(window.store?.isAdmin && window.store.isAdmin())
         };
 
         const res = await fetch('/api/sync', {
@@ -5962,9 +6170,16 @@ class App {
 
     document.getElementById('btn-toggle-admin')?.addEventListener('click', () => {
       if (this.store.isAdmin()) {
-        this.store.logoutAdmin();
+        this.store.logoutAdmin(false);
         this.updateAdminUI();
         this.showToast('Saiu do Modo Admin.', 'info');
+      } else if (this.store.hasValidTwoHourPass && this.store.hasValidTwoHourPass()) {
+        this.store.resumeAdminFromPass();
+        this.updateAdminUI();
+        this.showToast('Modo Administrador ativado (passe de 2h reconhecido neste PC)!', 'success');
+        setTimeout(() => {
+          window.employeeManager?.checkAndOpenAdminVacationPopup();
+        }, 250);
       } else {
         const pinInput = document.getElementById('admin-pin');
         if (pinInput) pinInput.value = '';
@@ -5972,6 +6187,20 @@ class App {
         document.getElementById('admin-login-error')?.classList.add('hidden');
         this.openModal('modal-admin-login');
       }
+    });
+
+    // Propaga o passe de 2h ao alternar entre Loja 1 e Loja 2 no mesmo PC
+    document.querySelectorAll('.dropdown-section a[href*="betel"]').forEach(link => {
+      link.addEventListener('click', () => {
+        if (this.store.hasValidTwoHourPass && this.store.hasValidTwoHourPass()) {
+          try {
+            const targetUrl = new URL(link.href, window.location.origin);
+            targetUrl.searchParams.set('admin_until', String(this.store.getAdminExpiresAt()));
+            targetUrl.searchParams.set('admin_active', this.store.isAdmin() ? '1' : '0');
+            link.href = targetUrl.toString();
+          } catch (err) {}
+        }
+      });
     });
 
     document.getElementById('admin-pin')?.addEventListener('keydown', (e) => {

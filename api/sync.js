@@ -14,6 +14,10 @@ export default async function handler(req, res) {
   const pB = 'l8uorzMUDEhVW' + 'cms0BjTcSD7rj97U60HueVn';
   const GITHUB_TOKEN = process.env.BETHEL_SYNC_TOKEN || (pA + pB);
 
+  const clientIp = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'local').split(',')[0].trim();
+  const clientUa = String(req.headers['user-agent'] || 'browser').slice(0, 120);
+  const clientSig = `${clientIp}::${clientUa}`;
+
   try {
     if (req.method === 'GET') {
       const store = (req.query.store || 'loja2').toLowerCase();
@@ -38,19 +42,26 @@ export default async function handler(req, res) {
 
       const storeData = parsed[store] || { schedules: {}, employees: [], campaigns: [] };
       const otherStoreData = parsed[otherStore] || { schedules: {}, employees: [], campaigns: [] };
+      const adminPasses = (parsed._adminPasses && typeof parsed._adminPasses === 'object') ? parsed._adminPasses : {};
+      const pcPassObj = adminPasses[clientSig];
+      const pcAdminUntil = (pcPassObj && typeof pcPassObj === 'object') ? Number(pcPassObj.until || 0) : Number(pcPassObj || 0);
+      const pcAdminActive = (pcPassObj && typeof pcPassObj === 'object') ? Boolean(pcPassObj.active) : true;
+
       return res.status(200).json({
         success: true,
         store: store,
         data: storeData,
         otherStore: otherStore,
         otherData: otherStoreData,
+        pcAdminUntil: (pcAdminUntil > Date.now()) ? pcAdminUntil : 0,
+        pcAdminActive: (pcAdminUntil > Date.now()) ? pcAdminActive : false,
         updatedAt: gistData.updated_at
       });
     }
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const { store, schedules, employees, campaigns } = body;
+      const { store, schedules, employees, campaigns, adminUntil, adminActive } = body;
       const storeKey = (store || 'loja2').toLowerCase();
 
       const getResp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
@@ -82,6 +93,27 @@ export default async function handler(req, res) {
           : (prevStore.campaigns || []),
         updatedAt: new Date().toISOString()
       };
+
+      if (adminUntil !== undefined) {
+        if (!fullDb._adminPasses || typeof fullDb._adminPasses !== 'object') {
+          fullDb._adminPasses = {};
+        }
+        const now = Date.now();
+        for (const k of Object.keys(fullDb._adminPasses)) {
+          const item = fullDb._adminPasses[k];
+          const exp = (item && typeof item === 'object') ? Number(item.until || 0) : Number(item || 0);
+          if (!exp || exp <= now) delete fullDb._adminPasses[k];
+        }
+        const untilNum = Number(adminUntil || 0);
+        if (untilNum > now) {
+          fullDb._adminPasses[clientSig] = {
+            until: untilNum,
+            active: adminActive !== false
+          };
+        } else {
+          delete fullDb._adminPasses[clientSig];
+        }
+      }
 
       const patchResp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
         method: 'PATCH',
