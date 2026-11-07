@@ -3623,61 +3623,6 @@ class CalendarManager {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  renderBirthdaysFooter() {
-    const container = document.getElementById('calendar-birthdays-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const emps = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
-    const monthBirthdays = [];
-
-    emps.forEach(emp => {
-      if (!emp.birthday) return;
-      let day = null, month = null;
-      const bStr = emp.birthday.trim();
-      if (bStr.includes('/')) {
-        const parts = bStr.split('/');
-        day = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-      } else if (bStr.includes('-')) {
-        const parts = bStr.split('-');
-        if (parts.length === 3) {
-          month = parseInt(parts[1], 10);
-          day = parseInt(parts[2], 10);
-        } else if (parts.length === 2) {
-          month = parseInt(parts[0], 10);
-          day = parseInt(parts[1], 10);
-        }
-      }
-      if (month === this.currentMonth && !isNaN(day) && day >= 1 && day <= 31) {
-        monthBirthdays.push({ day, month, name: emp.name });
-      }
-    });
-
-    monthBirthdays.sort((a, b) => a.day - b.day);
-
-    const label = document.createElement('div');
-    label.className = 'birthday-label';
-    label.innerHTML = '<i data-lucide="cake"></i><span>Aniversariantes do Mês:</span>';
-    container.appendChild(label);
-
-    if (monthBirthdays.length === 0) {
-      const noneEl = document.createElement('span');
-      noneEl.className = 'no-birthdays-text';
-      noneEl.textContent = 'Nenhum aniversariante neste mês.';
-      container.appendChild(noneEl);
-    } else {
-      monthBirthdays.forEach(b => {
-        const item = document.createElement('div');
-        item.className = 'birthday-pill-item';
-        item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
-        container.appendChild(item);
-      });
-    }
-
-    if (window.lucide) window.lucide.createIcons();
-  }
-
   // --- GERENCIAMENTO E LÓGICA DE AÇÕES E CAMPANHAS ---
   getCampaignStatusForDate(dateKey, campaigns) {
     if (!campaigns || !Array.isArray(campaigns)) return [];
@@ -3754,13 +3699,10 @@ class CalendarManager {
     container.innerHTML = '';
 
     const campaigns = this.store.getCampaigns();
-    if (!campaigns || campaigns.length === 0) return;
-
-    const label = document.createElement('div');
-    label.className = 'holiday-label';
-    label.style.color = '#eab308';
-    label.innerHTML = '<i data-lucide="target"></i><span>Ações da Farmácia:</span>';
-    container.appendChild(label);
+    if (!campaigns || campaigns.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
 
     const monthPrefix = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
     const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
@@ -3773,19 +3715,25 @@ class CalendarManager {
     }
 
     if (activeInMonthMap.size === 0) {
-      const noneEl = document.createElement('span');
-      noneEl.className = 'no-holidays-text';
-      noneEl.textContent = 'Nenhuma ação agendada neste mês.';
-      container.appendChild(noneEl);
-    } else {
-      activeInMonthMap.forEach(({ campaign, isRadarAlert }) => {
-        const item = document.createElement('div');
-        item.className = `campaign-footer-chip ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
-        item.style.backgroundColor = campaign.color || '#eab308';
-        item.innerHTML = `<i data-lucide="target" style="width: 12px; height: 12px;"></i> <strong>${campaign.title}</strong>`;
-        container.appendChild(item);
-      });
+      container.style.display = 'none';
+      return;
     }
+
+    container.style.display = 'flex';
+
+    const label = document.createElement('div');
+    label.className = 'holiday-label';
+    label.style.color = '#eab308';
+    label.innerHTML = '<i data-lucide="target"></i><span>Ações da Farmácia:</span>';
+    container.appendChild(label);
+
+    activeInMonthMap.forEach(({ campaign, isRadarAlert }) => {
+      const item = document.createElement('div');
+      item.className = `campaign-footer-chip ${isRadarAlert ? 'pulse-radar-alert' : ''}`;
+      item.style.backgroundColor = campaign.color || '#eab308';
+      item.innerHTML = `<i data-lucide="target" style="width: 12px; height: 12px;"></i> <strong>${campaign.title}</strong>`;
+      container.appendChild(item);
+    });
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -3798,9 +3746,6 @@ class CalendarManager {
     const employees = (this.store.getEmployees() || []).filter(e => e.status !== 'INACTIVE');
     const curYear = this.currentYear;
     const curMonth = this.currentMonth;
-    const curStart = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
-    const curDays = new Date(curYear, curMonth, 0).getDate();
-    const curEnd = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(curDays).padStart(2, '0')}`;
 
     const nextMonth = curMonth === 12 ? 1 : curMonth + 1;
     const nextYear = curMonth === 12 ? curYear + 1 : curYear;
@@ -3817,63 +3762,66 @@ class CalendarManager {
       return `${d}/${m}`;
     };
 
-    const currentMonthVacations = [];
     const nextMonthVacations = [];
 
     employees.forEach(emp => {
       const periods = Array.isArray(emp.vacationPeriods) ? emp.vacationPeriods : [];
+      let addedByPeriod = false;
       periods.forEach(p => {
         if (!p || !p.startDate || !p.endDate) return;
-        if (p.startDate <= curEnd && p.endDate >= curStart) {
-          currentMonthVacations.push({
-            name: emp.name,
-            label: `${fmtBr(p.startDate)} a ${fmtBr(p.endDate)}`
-          });
-        }
         if (p.startDate <= nextEnd && p.endDate >= nextStart) {
+          addedByPeriod = true;
           nextMonthVacations.push({
+            emp,
             name: emp.name,
-            label: `${fmtBr(p.startDate)} a ${fmtBr(p.endDate)}`
+            datesLabel: `${fmtBr(p.startDate)} a ${fmtBr(p.endDate)}`
           });
         }
       });
 
       // Se não tiver data exata lançada para o próximo mês, mas o Mês de Direito dele for o próximo mês
-      if (parseInt(emp.vacationRightMonth, 10) === nextMonth && !nextMonthVacations.some(v => v.name === emp.name)) {
+      if (!addedByPeriod && parseInt(emp.vacationRightMonth, 10) === nextMonth) {
         nextMonthVacations.push({
+          emp,
           name: emp.name,
-          label: 'Mês de férias'
+          datesLabel: null
         });
       }
     });
 
+    if (nextMonthVacations.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'flex';
+
     const label = document.createElement('div');
     label.className = 'vacation-footer-label';
-    label.innerHTML = '<i data-lucide="palmtree"></i><span>Férias do Mês:</span>';
+    label.innerHTML = `<i data-lucide="palmtree"></i><span>Férias ${nextMonthTitle}:</span>`;
     container.appendChild(label);
 
-    if (currentMonthVacations.length === 0) {
-      const noneEl = document.createElement('span');
-      noneEl.className = 'no-vacations-text';
-      noneEl.textContent = 'Ninguém em férias neste mês.';
-      container.appendChild(noneEl);
-    } else {
-      currentMonthVacations.forEach(v => {
-        const pill = document.createElement('div');
-        pill.className = 'vacation-pill-item';
-        pill.innerHTML = `<strong>${v.name}</strong> <span>(${v.label})</span>`;
-        container.appendChild(pill);
+    nextMonthVacations.forEach(v => {
+      const item = document.createElement('div');
+      item.className = 'vacation-pill-item';
+      if (v.datesLabel) {
+        item.innerHTML = `<strong>${v.datesLabel}</strong> - ${v.name}`;
+      } else {
+        item.innerHTML = `<strong>${v.name}</strong>`;
+      }
+      item.title = this.store.isAdmin()
+        ? `Clique para editar as férias de ${v.name}`
+        : `Férias de ${v.name} em ${nextMonthTitle}`;
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.store.isAdmin() && window.employeeManager) {
+          window.employeeManager.openEditModal(v.emp);
+        } else {
+          this.highlightEmployee(v.name);
+        }
       });
-    }
-
-    // Destaque de Férias do Próximo Mês (ex: Férias Dezembro: Funcionário X)
-    if (nextMonthVacations.length > 0) {
-      const nextBadge = document.createElement('div');
-      nextBadge.className = 'vacation-pill-next-month';
-      const namesList = nextMonthVacations.map(v => `${v.name} (${v.label})`).join(', ');
-      nextBadge.innerHTML = `<span>🗓️ <strong>Férias ${nextMonthTitle}:</strong> ${namesList}</span>`;
-      container.appendChild(nextBadge);
-    }
+      container.appendChild(item);
+    });
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -3909,6 +3857,12 @@ class CalendarManager {
       }
     });
 
+    if (monthBirthdays.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'flex';
     monthBirthdays.sort((a, b) => a.day - b.day);
 
     const label = document.createElement('div');
@@ -3916,27 +3870,20 @@ class CalendarManager {
     label.innerHTML = '<i data-lucide="cake"></i><span>Aniversariantes do Mês:</span>';
     container.appendChild(label);
 
-    if (monthBirthdays.length === 0) {
-      const noneEl = document.createElement('span');
-      noneEl.className = 'no-birthdays-text';
-      noneEl.textContent = 'Nenhum aniversariante neste mês.';
-      container.appendChild(noneEl);
-    } else {
-      monthBirthdays.forEach(b => {
-        const item = document.createElement('div');
-        item.className = 'birthday-pill-item';
-        item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
-        item.title = `Clique para comemorar o aniversário de ${b.name}! 🎉`;
-        item.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const rect = item.getBoundingClientRect();
-          const x = (rect.left + rect.width / 2) / window.innerWidth;
-          const y = (rect.top + rect.height / 2) / window.innerHeight;
-          this.triggerConfetti(x, y);
-        });
-        container.appendChild(item);
+    monthBirthdays.forEach(b => {
+      const item = document.createElement('div');
+      item.className = 'birthday-pill-item';
+      item.innerHTML = `<strong>${String(b.day).padStart(2, '0')}/${String(b.month).padStart(2, '0')}</strong> - ${b.name} 🎂`;
+      item.title = `Clique para comemorar o aniversário de ${b.name}! 🎉`;
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = item.getBoundingClientRect();
+        const x = (rect.left + rect.width / 2) / window.innerWidth;
+        const y = (rect.top + rect.height / 2) / window.innerHeight;
+        this.triggerConfetti(x, y);
       });
-    }
+      container.appendChild(item);
+    });
 
     if (window.lucide) window.lucide.createIcons();
   }
