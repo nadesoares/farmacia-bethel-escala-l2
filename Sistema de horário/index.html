@@ -686,18 +686,34 @@
                 Agendar Período de Férias na Escala (Fica no 2º Turno em Vermelho):
               </label>
               <div style="display: flex; gap: 0.4rem; align-items: flex-end; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 120px;">
+                <div style="flex: 1; min-width: 125px;">
                   <span style="font-size: 0.68rem; color: #9f1239; display: block; margin-bottom: 2px;">Data Início</span>
-                  <input type="date" id="vacation-period-start" class="form-input-modern" style="height: 34px; font-size: 0.78rem; padding: 0.2rem 0.45rem;">
+                  <div class="vacation-date-input-wrap">
+                    <input type="text" id="vacation-period-start" class="form-input-modern" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off" style="height: 34px; font-size: 0.78rem; padding: 0.2rem 0.5rem;">
+                    <button type="button" id="btn-open-cal-start" class="btn-vacation-cal-trigger" title="Abrir calendário da Data Início">
+                      <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                    </button>
+                  </div>
                 </div>
-                <div style="flex: 1; min-width: 120px;">
+                <div style="flex: 1; min-width: 125px;">
                   <span style="font-size: 0.68rem; color: #9f1239; display: block; margin-bottom: 2px;">Data Término</span>
-                  <input type="date" id="vacation-period-end" class="form-input-modern" style="height: 34px; font-size: 0.78rem; padding: 0.2rem 0.45rem;">
+                  <div class="vacation-date-input-wrap">
+                    <input type="text" id="vacation-period-end" class="form-input-modern" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off" style="height: 34px; font-size: 0.78rem; padding: 0.2rem 0.5rem;">
+                    <button type="button" id="btn-open-cal-end" class="btn-vacation-cal-trigger" title="Abrir calendário da Data Término">
+                      <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                    </button>
+                  </div>
                 </div>
                 <button type="button" id="btn-add-vacation-period" class="btn btn-emerald" style="height: 34px; padding: 0 0.75rem; font-size: 0.76rem; background: #e11d48; border-color: #be123c;">
                   + Adicionar Período
                 </button>
               </div>
+
+              <!-- Resumo em tempo real do intervalo selecionado (ex: 10 dias de férias) -->
+              <div id="vacation-current-selection-preview" class="vac-selection-banner hidden"></div>
+
+              <!-- Calendário Visual de Período (abre na Data Início e marca os X dias de férias) -->
+              <div id="vacation-range-calendar-popover" class="vacation-range-popover hidden"></div>
               <div id="employee-vacation-periods-list" style="display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem;">
                 <!-- Períodos de férias renderizados dinamicamente -->
               </div>
@@ -1489,7 +1505,7 @@ class Store {
     periods.forEach(p => {
       if (!p || !p.startDate || !p.endDate) return;
       const start = p.startDate > cycleStartStr ? p.startDate : cycleStartStr;
-      const end = p.endDate < cycleEndStr ? p.endDate : cycleEndStr;
+      const end = p.endDate;
       if (start <= end) {
         const [sy, sm, sd] = start.split('-').map(Number);
         const [ey, em, ed] = end.split('-').map(Number);
@@ -4597,12 +4613,340 @@ class EmployeeManager {
   constructor(store) {
     this.store = store;
     this.tempVacationPeriods = [];
+    this.calPickerState = {
+      isOpen: false,
+      activeField: 'start', // 'start' | 'end'
+      viewYear: new Date().getFullYear(),
+      viewMonth: new Date().getMonth() + 1,
+      hoverIso: null
+    };
     this.init();
   }
 
   init() {
     this.bindEvents();
     this.render();
+  }
+
+  parseDateInputToIso(rawVal) {
+    if (!rawVal) return '';
+    const v = String(rawVal).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) {
+      const dd = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const yyyy = parseInt(m[3], 10);
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yyyy >= 2000 && yyyy <= 2100) {
+        return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      }
+    }
+    return '';
+  }
+
+  getVacationInputIso(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return '';
+    const parsed = this.parseDateInputToIso(el.value);
+    if (parsed) {
+      el.dataset.iso = parsed;
+      return parsed;
+    }
+    return el.dataset.iso || '';
+  }
+
+  setVacationInputIso(inputId, isoStr) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (!isoStr) {
+      el.value = '';
+      el.dataset.iso = '';
+      return;
+    }
+    const norm = this.parseDateInputToIso(isoStr);
+    if (!norm) {
+      el.value = '';
+      el.dataset.iso = '';
+      return;
+    }
+    el.dataset.iso = norm;
+    el.value = this.formatDateBr(norm);
+  }
+
+  addDaysToIso(isoStr, daysToAdd) {
+    if (!isoStr) return '';
+    const [y, m, d] = isoStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + (daysToAdd - 1));
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  }
+
+  openVacationCalendarPopover(field) {
+    const popover = document.getElementById('vacation-range-calendar-popover');
+    if (!popover) return;
+
+    this.calPickerState.isOpen = true;
+    this.calPickerState.activeField = field;
+    this.calPickerState.hoverIso = null;
+
+    const startIso = this.getVacationInputIso('vacation-period-start');
+    const endIso = this.getVacationInputIso('vacation-period-end');
+
+    // Regra solicitada: Ao clicar no calendário da Data Término (tendo Data Início preenchida),
+    // SEMPRE começa mostrando o mês/ano da Data Início (ou Data Término se já estiver no mesmo período)!
+    let refIso = '';
+    if (field === 'end') {
+      if (startIso) {
+        refIso = startIso;
+      } else if (endIso) {
+        refIso = endIso;
+      }
+    } else {
+      if (startIso) {
+        refIso = startIso;
+      }
+    }
+
+    if (refIso) {
+      const [ry, rm] = refIso.split('-').map(Number);
+      this.calPickerState.viewYear = ry;
+      this.calPickerState.viewMonth = rm;
+    } else {
+      const rightMonth = parseInt(document.getElementById('employee-vacation-month')?.value, 10) || null;
+      const calYear = window.calendarManager?.currentYear || new Date().getFullYear();
+      const calMonth = window.calendarManager?.currentMonth || (new Date().getMonth() + 1);
+      this.calPickerState.viewYear = calYear;
+      this.calPickerState.viewMonth = rightMonth || calMonth;
+    }
+
+    document.getElementById('vacation-period-start')?.classList.toggle('active-picker-field', field === 'start');
+    document.getElementById('vacation-period-end')?.classList.toggle('active-picker-field', field === 'end');
+
+    popover.classList.remove('hidden');
+    this.renderVacationCalendarPopover();
+  }
+
+  closeVacationCalendarPopover() {
+    this.calPickerState.isOpen = false;
+    this.calPickerState.hoverIso = null;
+    document.getElementById('vacation-range-calendar-popover')?.classList.add('hidden');
+    document.getElementById('vacation-period-start')?.classList.remove('active-picker-field');
+    document.getElementById('vacation-period-end')?.classList.remove('active-picker-field');
+  }
+
+  renderVacationCalendarPopover() {
+    const popover = document.getElementById('vacation-range-calendar-popover');
+    if (!popover || !this.calPickerState.isOpen) return;
+
+    const { viewYear, viewMonth, activeField, hoverIso } = this.calPickerState;
+    const startIso = this.getVacationInputIso('vacation-period-start');
+    const endIso = this.getVacationInputIso('vacation-period-end');
+    const previewEndIso = (activeField === 'end' && startIso && hoverIso && hoverIso >= startIso) ? hoverIso : endIso;
+
+    const monthNamesLower = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const firstDayWeek = new Date(viewYear, viewMonth - 1, 1).getDay(); // 0=Dom..6=Sáb
+    const totalDays = new Date(viewYear, viewMonth, 0).getDate();
+
+    const selectedDaysCount = (startIso && previewEndIso && previewEndIso >= startIso)
+      ? this.countDaysInclusive(startIso, previewEndIso)
+      : (startIso ? 1 : 0);
+
+    // Atalhos rápidos de quantidade de dias quando Data Início já está definida
+    const presetsHtml = startIso ? `
+      <div class="vac-cal-quick-presets">
+        <span style="font-size: 0.7rem; font-weight: 800; color: #881337;">Marcar duração:</span>
+        ${[5, 10, 15, 20, 30].map(dCount => `
+          <button type="button" class="btn-vac-preset-days ${selectedDaysCount === dCount && endIso ? 'active' : ''}" data-days="${dCount}">
+            ${dCount} dias
+          </button>
+        `).join('')}
+      </div>
+    ` : '';
+
+    let cellsHtml = '';
+    for (let i = 0; i < firstDayWeek; i++) {
+      cellsHtml += '<div class="vac-cal-day is-empty"></div>';
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      const iso = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isBeforeStart = (activeField === 'end' && startIso && iso < startIso);
+      const isStart = (startIso && iso === startIso);
+      const isEnd = (previewEndIso && iso === previewEndIso && (!startIso || previewEndIso >= startIso));
+      const isInRange = (startIso && previewEndIso && iso > startIso && iso < previewEndIso);
+      const isAlreadyScheduled = (this.tempVacationPeriods || []).some(p => p && p.startDate && p.endDate && iso >= p.startDate && iso <= p.endDate);
+
+      const classes = [
+        'vac-cal-day',
+        isBeforeStart ? 'is-disabled' : '',
+        isStart ? 'is-range-start' : '',
+        isEnd ? 'is-range-end' : '',
+        isInRange ? 'is-in-range' : '',
+        isAlreadyScheduled ? 'is-already-scheduled' : ''
+      ].filter(Boolean).join(' ');
+
+      cellsHtml += `<button type="button" class="${classes}" data-iso="${iso}" ${isBeforeStart ? 'disabled' : ''}>${day}</button>`;
+    }
+
+    const modeLabel = activeField === 'start'
+      ? '1º Passo: Clique no dia de INÍCIO das férias'
+      : (startIso ? `Início: ${this.formatDateBr(startIso)} — Clique no dia de TÉRMINO` : 'Selecione a Data Término');
+
+    const footerStatusHtml = (startIso && previewEndIso && previewEndIso >= startIso)
+      ? `<span style="font-size: 0.76rem; font-weight: 900; color: #be123c;">🏖️ ${selectedDaysCount} ${selectedDaysCount === 1 ? 'dia de férias' : 'dias de férias'} (${this.formatDateBr(startIso)} a ${this.formatDateBr(previewEndIso)})</span>`
+      : `<span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">${modeLabel}</span>`;
+
+    popover.innerHTML = `
+      <div class="vac-cal-header">
+        <span class="vac-cal-title">${monthNamesLower[viewMonth - 1]} de ${viewYear}</span>
+        <div class="vac-cal-nav-btns">
+          <button type="button" class="btn-vac-cal-nav" id="btn-vac-cal-prev" title="Mês anterior">▲</button>
+          <button type="button" class="btn-vac-cal-nav" id="btn-vac-cal-next" title="Próximo mês">▼</button>
+        </div>
+      </div>
+      ${presetsHtml}
+      <div class="vac-cal-weekdays">
+        <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+      </div>
+      <div class="vac-cal-days-grid">
+        ${cellsHtml}
+      </div>
+      <div class="vac-cal-footer">
+        ${footerStatusHtml}
+        <div style="display: flex; gap: 0.35rem; margin-left: auto;">
+          <button type="button" id="btn-vac-cal-clear" style="background: transparent; border: none; color: #0284c7; font-size: 0.73rem; font-weight: 700; cursor: pointer; padding: 2px 6px;">Limpar</button>
+          <button type="button" id="btn-vac-cal-close" style="background: #e11d48; color: #ffffff; border: none; border-radius: 6px; font-size: 0.73rem; font-weight: 800; cursor: pointer; padding: 3px 10px;">OK</button>
+        </div>
+      </div>
+    `;
+
+    popover.querySelector('#btn-vac-cal-prev')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.calPickerState.viewMonth--;
+      if (this.calPickerState.viewMonth < 1) {
+        this.calPickerState.viewMonth = 12;
+        this.calPickerState.viewYear--;
+      }
+      this.renderVacationCalendarPopover();
+    });
+
+    popover.querySelector('#btn-vac-cal-next')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.calPickerState.viewMonth++;
+      if (this.calPickerState.viewMonth > 12) {
+        this.calPickerState.viewMonth = 1;
+        this.calPickerState.viewYear++;
+      }
+      this.renderVacationCalendarPopover();
+    });
+
+    popover.querySelectorAll('.btn-vac-preset-days').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const days = parseInt(btn.dataset.days, 10);
+        if (startIso && days > 0) {
+          const targetEndIso = this.addDaysToIso(startIso, days);
+          this.setVacationInputIso('vacation-period-end', targetEndIso);
+          this.calPickerState.activeField = 'end';
+          this.calPickerState.hoverIso = null;
+          this.updateVacationLivePreview();
+          this.renderVacationCalendarPopover();
+        }
+      });
+    });
+
+    popover.querySelectorAll('.vac-cal-day:not(.is-empty):not(.is-disabled)').forEach(dayBtn => {
+      dayBtn.addEventListener('mouseenter', () => {
+        if (this.calPickerState.activeField === 'end' && startIso) {
+          const hIso = dayBtn.dataset.iso;
+          if (hIso >= startIso && this.calPickerState.hoverIso !== hIso) {
+            this.calPickerState.hoverIso = hIso;
+            this.updateCalendarHoverHighlight(popover, startIso, hIso);
+          }
+        }
+      });
+
+      dayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const clickedIso = dayBtn.dataset.iso;
+        if (this.calPickerState.activeField === 'start') {
+          this.setVacationInputIso('vacation-period-start', clickedIso);
+          const curEnd = this.getVacationInputIso('vacation-period-end');
+          if (curEnd && curEnd < clickedIso) {
+            this.setVacationInputIso('vacation-period-end', '');
+          }
+          // Avança automaticamente para escolher a Data Término já no mesmo mês da Data Início!
+          this.calPickerState.activeField = 'end';
+          document.getElementById('vacation-period-start')?.classList.remove('active-picker-field');
+          document.getElementById('vacation-period-end')?.classList.add('active-picker-field');
+          this.updateVacationLivePreview();
+          this.renderVacationCalendarPopover();
+        } else {
+          if (!startIso) {
+            this.setVacationInputIso('vacation-period-start', clickedIso);
+          } else {
+            this.setVacationInputIso('vacation-period-end', clickedIso);
+          }
+          this.calPickerState.hoverIso = null;
+          this.updateVacationLivePreview();
+          this.renderVacationCalendarPopover();
+        }
+      });
+    });
+
+    popover.querySelector('#btn-vac-cal-clear')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setVacationInputIso('vacation-period-start', '');
+      this.setVacationInputIso('vacation-period-end', '');
+      this.calPickerState.activeField = 'start';
+      this.calPickerState.hoverIso = null;
+      this.updateVacationLivePreview();
+      this.renderVacationCalendarPopover();
+    });
+
+    popover.querySelector('#btn-vac-cal-close')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeVacationCalendarPopover();
+    });
+  }
+
+  updateCalendarHoverHighlight(popover, startIso, hoverEndIso) {
+    popover.querySelectorAll('.vac-cal-day:not(.is-empty):not(.is-disabled)').forEach(btn => {
+      const iso = btn.dataset.iso;
+      btn.classList.toggle('is-range-start', iso === startIso);
+      btn.classList.toggle('is-range-end', iso === hoverEndIso);
+      btn.classList.toggle('is-in-range', iso > startIso && iso < hoverEndIso);
+    });
+    const footerSpan = popover.querySelector('.vac-cal-footer > span');
+    if (footerSpan && hoverEndIso >= startIso) {
+      const dCount = this.countDaysInclusive(startIso, hoverEndIso);
+      footerSpan.style.color = '#be123c';
+      footerSpan.style.fontWeight = '900';
+      footerSpan.textContent = `🏖️ ${dCount} ${dCount === 1 ? 'dia de férias' : 'dias de férias'} (${this.formatDateBr(startIso)} a ${this.formatDateBr(hoverEndIso)})`;
+    }
+  }
+
+  formatTypedDateInput(inputEl, fieldType) {
+    let digits = inputEl.value.replace(/\D/g, '').slice(0, 8);
+    let formatted = '';
+    if (digits.length > 4) {
+      formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+    } else if (digits.length > 2) {
+      formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+    } else {
+      formatted = digits;
+    }
+    inputEl.value = formatted;
+    const iso = this.parseDateInputToIso(formatted);
+    inputEl.dataset.iso = iso || '';
+    if (iso) {
+      const [y, m] = iso.split('-').map(Number);
+      this.calPickerState.viewYear = y;
+      this.calPickerState.viewMonth = m;
+      if (this.calPickerState.isOpen) {
+        this.renderVacationCalendarPopover();
+      }
+    }
+    this.updateVacationLivePreview();
   }
 
   bindEvents() {
@@ -4642,11 +4986,27 @@ class EmployeeManager {
     document.getElementById('employee-vacation-month')?.addEventListener('change', () => this.updateVacationLivePreview());
     document.getElementById('employee-vacation-manual-days')?.addEventListener('input', () => this.updateVacationLivePreview());
 
+    const startInput = document.getElementById('vacation-period-start');
+    const endInput = document.getElementById('vacation-period-end');
+
+    startInput?.addEventListener('click', () => this.openVacationCalendarPopover('start'));
+    document.getElementById('btn-open-cal-start')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openVacationCalendarPopover('start');
+    });
+
+    endInput?.addEventListener('click', () => this.openVacationCalendarPopover('end'));
+    document.getElementById('btn-open-cal-end')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openVacationCalendarPopover('end');
+    });
+
+    startInput?.addEventListener('input', () => this.formatTypedDateInput(startInput, 'start'));
+    endInput?.addEventListener('input', () => this.formatTypedDateInput(endInput, 'end'));
+
     document.getElementById('btn-add-vacation-period')?.addEventListener('click', () => {
-      const startInput = document.getElementById('vacation-period-start');
-      const endInput = document.getElementById('vacation-period-end');
-      const startDate = startInput?.value;
-      const endDate = endInput?.value;
+      const startDate = this.getVacationInputIso('vacation-period-start');
+      const endDate = this.getVacationInputIso('vacation-period-end');
 
       if (!startDate || !endDate) {
         window.app?.showToast('Selecione a data de início e a data de término das férias.', 'warning');
@@ -4664,8 +5024,9 @@ class EmployeeManager {
       });
       this.tempVacationPeriods.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-      if (startInput) startInput.value = '';
-      if (endInput) endInput.value = '';
+      this.setVacationInputIso('vacation-period-start', '');
+      this.setVacationInputIso('vacation-period-end', '');
+      this.closeVacationCalendarPopover();
       this.renderTempVacationPeriods();
       this.updateVacationLivePreview();
     });
@@ -4707,13 +5068,14 @@ class EmployeeManager {
       const item = document.createElement('div');
       item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #fda4af; border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.76rem; color: #881337;';
       item.innerHTML = `
-        <span>🏖️ <strong>${this.formatDateBr(p.startDate)}</strong> até <strong>${this.formatDateBr(p.endDate)}</strong> (${days} ${days === 1 ? 'dia' : 'dias'})</span>
+        <span>🏖️ <strong>${this.formatDateBr(p.startDate)}</strong> até <strong>${this.formatDateBr(p.endDate)}</strong> (<strong>${days} ${days === 1 ? 'dia de férias' : 'dias de férias'}</strong>)</span>
         <button type="button" data-idx="${idx}" class="btn-remove-vac-period" style="background: transparent; border: none; color: #e11d48; cursor: pointer; font-weight: 800; padding: 2px 6px;" title="Remover período">✕</button>
       `;
       item.querySelector('.btn-remove-vac-period')?.addEventListener('click', () => {
         this.tempVacationPeriods.splice(idx, 1);
         this.renderTempVacationPeriods();
         this.updateVacationLivePreview();
+        if (this.calPickerState.isOpen) this.renderVacationCalendarPopover();
       });
       listEl.appendChild(item);
     });
@@ -4721,13 +5083,41 @@ class EmployeeManager {
 
   updateVacationLivePreview() {
     const badge = document.getElementById('employee-vacation-live-badge');
+    const selectionBanner = document.getElementById('vacation-current-selection-preview');
+
+    const startIso = this.getVacationInputIso('vacation-period-start');
+    const endIso = this.getVacationInputIso('vacation-period-end');
+
+    // Exibe faixa em tempo real quando Data Início e Data Término estão preenchidas (ex: "10 dias de férias")
+    if (selectionBanner) {
+      if (startIso && endIso && endIso >= startIso) {
+        const dCount = this.countDaysInclusive(startIso, endIso);
+        selectionBanner.classList.remove('hidden');
+        selectionBanner.innerHTML = `
+          <span>🏖️ Selecionado: <strong>${this.formatDateBr(startIso)}</strong> até <strong>${this.formatDateBr(endIso)}</strong> — <strong style="color: #e11d48; text-decoration: underline;">${dCount} ${dCount === 1 ? 'dia de férias' : 'dias de férias'}</strong></span>
+        `;
+      } else {
+        selectionBanner.classList.add('hidden');
+        selectionBanner.innerHTML = '';
+      }
+    }
+
     if (!badge) return;
     const rightMonth = parseInt(document.getElementById('employee-vacation-month')?.value, 10) || null;
     const manualDays = parseInt(document.getElementById('employee-vacation-manual-days')?.value, 10) || 0;
+
+    const combinedPeriods = Array.isArray(this.tempVacationPeriods) ? [...this.tempVacationPeriods] : [];
+    if (startIso && endIso && endIso >= startIso) {
+      const alreadyInList = combinedPeriods.some(p => p.startDate === startIso && p.endDate === endIso);
+      if (!alreadyInList) {
+        combinedPeriods.push({ startDate: startIso, endDate: endIso });
+      }
+    }
+
     const tempEmp = {
       vacationRightMonth: rightMonth,
       vacationManualUsedDays: manualDays,
-      vacationPeriods: this.tempVacationPeriods
+      vacationPeriods: combinedPeriods
     };
     const summary = this.store.getEmployeeVacationSummary(tempEmp);
     if (summary.pendingDays === 0) {
@@ -4754,8 +5144,9 @@ class EmployeeManager {
 
     if (document.getElementById('employee-vacation-month')) document.getElementById('employee-vacation-month').value = '';
     if (document.getElementById('employee-vacation-manual-days')) document.getElementById('employee-vacation-manual-days').value = '0';
-    if (document.getElementById('vacation-period-start')) document.getElementById('vacation-period-start').value = '';
-    if (document.getElementById('vacation-period-end')) document.getElementById('vacation-period-end').value = '';
+    this.setVacationInputIso('vacation-period-start', '');
+    this.setVacationInputIso('vacation-period-end', '');
+    this.closeVacationCalendarPopover();
     this.tempVacationPeriods = [];
     this.renderTempVacationPeriods();
     this.updateVacationLivePreview();
@@ -4767,6 +5158,7 @@ class EmployeeManager {
     document.getElementById('plantao-shift-select').value = '2';
 
     window.app?.openModal('modal-employee');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   openEditModal(emp) {
@@ -4787,8 +5179,9 @@ class EmployeeManager {
     if (document.getElementById('employee-vacation-manual-days')) {
       document.getElementById('employee-vacation-manual-days').value = String(summary.manualUsedDays || 0);
     }
-    if (document.getElementById('vacation-period-start')) document.getElementById('vacation-period-start').value = '';
-    if (document.getElementById('vacation-period-end')) document.getElementById('vacation-period-end').value = '';
+    this.setVacationInputIso('vacation-period-start', '');
+    this.setVacationInputIso('vacation-period-end', '');
+    this.closeVacationCalendarPopover();
     this.tempVacationPeriods = Array.isArray(emp.vacationPeriods) ? JSON.parse(JSON.stringify(emp.vacationPeriods)) : [];
     this.renderTempVacationPeriods();
     this.updateVacationLivePreview();
@@ -4806,6 +5199,7 @@ class EmployeeManager {
     }
 
     window.app?.openModal('modal-employee');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   saveEmployee() {
@@ -4821,8 +5215,8 @@ class EmployeeManager {
     const vacationManualUsedDays = Math.min(30, Math.max(0, parseInt(document.getElementById('employee-vacation-manual-days')?.value, 10) || 0));
 
     // Caso o usuário tenha preenchido as datas de início e fim mas clicado direto em "Salvar" sem clicar em "+ Adicionar Período"
-    const pendingStart = document.getElementById('vacation-period-start')?.value;
-    const pendingEnd = document.getElementById('vacation-period-end')?.value;
+    const pendingStart = this.getVacationInputIso('vacation-period-start');
+    const pendingEnd = this.getVacationInputIso('vacation-period-end');
     if (pendingStart && pendingEnd && pendingEnd >= pendingStart) {
       const alreadyExists = this.tempVacationPeriods.some(p => p.startDate === pendingStart && p.endDate === pendingEnd);
       if (!alreadyExists) {

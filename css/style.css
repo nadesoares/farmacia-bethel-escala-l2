@@ -1997,3 +1997,239 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
   transform: translateY(-1px) scale(1.03);
   box-shadow: 0 3px 6px rgba(220, 38, 38, 0.15);
 }
+
+
+/* ==========================================================================
+   CALENDÁRIO VISUAL DE PERÍODO DE FÉRIAS (RANGE DATE PICKER)
+   ========================================================================== */
+.vacation-date-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.vacation-date-input-wrap input.form-input-modern {
+  padding-right: 2rem !important;
+  cursor: pointer;
+  background: #ffffff !important;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vacation-date-input-wrap input.form-input-modern.active-picker-field {
+  border-color: #e11d48 !important;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2) !important;
+}
+
+.btn-vacation-cal-trigger {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748b;
+  padding: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.btn-vacation-cal-trigger:hover {
+  color: #e11d48;
+  background: #fff1f2;
+}
+
+.vacation-range-popover {
+  margin-top: 0.5rem;
+  background: #ffffff;
+  border: 1.5px solid #fda4af;
+  border-radius: 10px;
+  padding: 0.75rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.14);
+  user-select: none;
+  animation: fadeInCal 0.15s ease-out;
+}
+
+.vacation-range-popover.hidden {
+  display: none !important;
+}
+
+@keyframes fadeInCal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vac-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  gap: 0.4rem;
+}
+
+.vac-cal-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: capitalize;
+}
+
+.vac-cal-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-vac-cal-nav {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-vac-cal-nav:hover {
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #be123c;
+}
+
+.vac-cal-quick-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px dashed #fecdd3;
+}
+
+.btn-vac-preset-days {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #fda4af;
+  background: #fff1f2;
+  color: #be123c;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-vac-preset-days:hover,
+.btn-vac-preset-days.active {
+  background: #e11d48;
+  border-color: #be123c;
+  color: #ffffff;
+}
+
+.vac-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.vac-cal-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.vac-cal-day {
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  position: relative;
+}
+
+.vac-cal-day:hover:not(.is-disabled):not(.is-empty) {
+  background: #ffe4e6;
+  color: #be123c;
+  border-color: #fda4af;
+}
+
+.vac-cal-day.is-empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+.vac-cal-day.is-disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.vac-cal-day.is-in-range {
+  background: #ffe4e6 !important;
+  color: #9f1239 !important;
+  border-radius: 4px;
+  font-weight: 800;
+}
+
+.vac-cal-day.is-range-start,
+.vac-cal-day.is-range-end {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  font-weight: 900;
+  border-color: #be123c !important;
+  box-shadow: 0 2px 5px rgba(225, 29, 72, 0.3);
+}
+
+.vac-cal-day.is-already-scheduled {
+  border: 1px dashed #e11d48;
+}
+
+.vac-cal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.vac-selection-banner {
+  margin-top: 0.45rem;
+  padding: 0.4rem 0.65rem;
+  background: #ffe4e6;
+  border: 1px solid #fda4af;
+  border-radius: 8px;
+  color: #9f1239;
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.vac-selection-banner.hidden {
+  display: none !important;
+}
