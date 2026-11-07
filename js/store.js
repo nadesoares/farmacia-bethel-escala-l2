@@ -275,8 +275,8 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(existingSchedules));
     }
 
-    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234' || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === 'Bd@9998') {
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234' || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === 'farmacia1') {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
     }
   }
 
@@ -445,10 +445,10 @@ class Store {
   }
 
   loginAdmin(pin) {
-    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'Pf@99947';
-    if (pin === 'Pf@99947' || pin === savedPin) {
+    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'farmacia1';
+    if (pin === 'farmacia1' || pin === savedPin) {
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
       return true;
     }
     return false;

@@ -270,9 +270,16 @@
       <form id="form-admin-login">
         <div class="modal-body">
           <p class="modal-instruction">Insira sua senha de administrador para editar e cadastrar.</p>
-          <div class="form-group-center">
-            <input type="password" id="admin-pin" class="pin-input" placeholder="Digite a senha..." maxlength="20" required autofocus>
+          <div class="form-group-center" style="position: relative; max-width: 320px; margin: 0 auto;">
+            <input type="password" id="admin-pin" class="pin-input" placeholder="Digite a senha..." maxlength="20" required autofocus style="width: 100%; padding-right: 2.75rem; box-sizing: border-box;">
+            <button type="button" id="btn-toggle-pin-visibility" title="Mostrar/Ocultar senha" style="position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #64748b; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem;">
+              <i data-lucide="eye" id="icon-pin-visibility" style="width: 18px; height: 18px;"></i>
+            </button>
           </div>
+          <label for="admin-remember-2h" style="display: flex; align-items: center; justify-content: center; gap: 0.45rem; margin-top: 0.75rem; font-size: 0.8rem; color: #475569; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="admin-remember-2h" checked style="width: 15px; height: 15px; accent-color: #10b981; cursor: pointer;">
+            <span>Manter conectado por <strong>2 horas</strong> neste aparelho</span>
+          </label>
           <div id="admin-login-error" class="form-error hidden">
             <i data-lucide="alert-triangle"></i> Senha incorreta.
           </div>
@@ -1006,8 +1013,9 @@ const STORAGE_KEYS = {
   EMPLOYEES: 'farmacia_escala_employees_v4',
   SCHEDULES: 'farmacia_escala_schedules_v20',
   OTHER_STORE_SCHEDULES: 'farmacia_escala_other_schedules_v20',
-  ADMIN_PIN: 'farmacia_escala_admin_pin_v1',
-  ADMIN_SESSION: 'farmacia_escala_admin_session_v1',
+  ADMIN_PIN: 'farmacia_escala_admin_pin_v2',
+  ADMIN_SESSION: 'farmacia_escala_admin_session_v2',
+  ADMIN_EXPIRES_AT: 'farmacia_escala_admin_expires_v2',
   CAMPAIGNS: 'farmacia_escala_campaigns_v1',
 };
 
@@ -1106,8 +1114,9 @@ class Store {
       localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify({}));
     }
 
-    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) === '1234') {
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
+    localStorage.removeItem('farmacia_escala_admin_pin_v1');
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
     }
   }
 
@@ -1296,14 +1305,45 @@ class Store {
   }
 
   isAdmin() {
-    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true';
+    const hasSession = sessionStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true' ||
+                       localStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true';
+    if (!hasSession) return false;
+
+    const expiresAt = Number(
+      localStorage.getItem(STORAGE_KEYS.ADMIN_EXPIRES_AT) ||
+      sessionStorage.getItem(STORAGE_KEYS.ADMIN_EXPIRES_AT) ||
+      0
+    );
+
+    // Expiração obrigatória após 2 horas
+    if (!expiresAt || Date.now() > expiresAt) {
+      this.logoutAdmin();
+      return false;
+    }
+    return true;
   }
 
-  loginAdmin(pin) {
-    const savedPin = localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'Pf@99947';
-    if (pin === 'Pf@99947' || pin === savedPin) {
+  loginAdmin(pin, rememberTwoHours = true) {
+    const cleanInput = (pin || '').trim().toLowerCase();
+    const savedPin = (localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || 'farmacia1').trim().toLowerCase();
+    if (cleanInput === 'farmacia1' || cleanInput === savedPin) {
+      const twoHoursMs = 2 * 60 * 60 * 1000;
+      const expiresAt = String(Date.now() + twoHoursMs);
+
       sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'Pf@99947');
+      sessionStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, expiresAt);
+
+      if (rememberTwoHours) {
+        localStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+        localStorage.setItem(STORAGE_KEYS.ADMIN_EXPIRES_AT, expiresAt);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+      }
+
+      if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
+        localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, 'farmacia1');
+      }
       return true;
     }
     return false;
@@ -1311,6 +1351,9 @@ class Store {
 
   logoutAdmin() {
     sessionStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
+    sessionStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_EXPIRES_AT);
   }
 
   setAdminPin(newPin) {
@@ -4851,6 +4894,25 @@ class App {
   }
 
   bindAdminAuth() {
+    const resetPinVisibility = () => {
+      const pinInput = document.getElementById('admin-pin');
+      const iconEl = document.getElementById('icon-pin-visibility');
+      if (pinInput) pinInput.type = 'password';
+      if (iconEl) iconEl.setAttribute('data-lucide', 'eye');
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    document.getElementById('btn-toggle-pin-visibility')?.addEventListener('click', () => {
+      const pinInput = document.getElementById('admin-pin');
+      const iconEl = document.getElementById('icon-pin-visibility');
+      if (!pinInput) return;
+      const isHidden = pinInput.type === 'password';
+      pinInput.type = isHidden ? 'text' : 'password';
+      if (iconEl) iconEl.setAttribute('data-lucide', isHidden ? 'eye-off' : 'eye');
+      if (window.lucide) window.lucide.createIcons();
+      pinInput.focus();
+    });
+
     document.getElementById('btn-toggle-admin')?.addEventListener('click', () => {
       if (this.store.isAdmin()) {
         this.store.logoutAdmin();
@@ -4859,6 +4921,7 @@ class App {
       } else {
         const pinInput = document.getElementById('admin-pin');
         if (pinInput) pinInput.value = '';
+        resetPinVisibility();
         document.getElementById('admin-login-error')?.classList.add('hidden');
         this.openModal('modal-admin-login');
       }
@@ -4877,10 +4940,12 @@ class App {
     document.getElementById('form-admin-login')?.addEventListener('submit', (e) => {
       e.preventDefault();
       const pin = document.getElementById('admin-pin')?.value;
-      if (this.store.loginAdmin(pin)) {
+      const remember2h = document.getElementById('admin-remember-2h')?.checked !== false;
+      if (this.store.loginAdmin(pin, remember2h)) {
+        resetPinVisibility();
         this.closeModal('modal-admin-login');
         this.updateAdminUI();
-        this.showToast('Modo Administrador ativado!', 'success');
+        this.showToast('Modo Administrador ativado por 2 horas!', 'success');
       } else {
         document.getElementById('admin-login-error')?.classList.remove('hidden');
         const pinInput = document.getElementById('admin-pin');
@@ -4905,6 +4970,21 @@ class App {
       } else {
         this.showToast('Senha atual incorreta.', 'error');
       }
+    });
+
+    // Monitoramento automático da sessão de 2 horas: se expirar, desloga e exige senha novamente
+    const checkSessionExpiry = () => {
+      const wasAdminUI = document.body.classList.contains('is-admin');
+      const stillAdmin = this.store.isAdmin();
+      if (wasAdminUI && !stillAdmin) {
+        this.updateAdminUI();
+        this.showToast('Sessão de 2h expirada. Digite a senha novamente para editar.', 'info');
+      }
+    };
+    setInterval(checkSessionExpiry, 15000);
+    window.addEventListener('focus', checkSessionExpiry);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkSessionExpiry();
     });
   }
 
