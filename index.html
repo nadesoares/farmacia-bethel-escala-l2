@@ -1010,7 +1010,7 @@ window.supabaseManager = new SupabaseManager();
  * STORE.JS - Gerenciamento de Estado e Persistência Local (LocalStorage)
  */
 const STORAGE_KEYS = {
-  EMPLOYEES: 'farmacia_escala_employees_v4',
+  EMPLOYEES: 'farmacia_escala_employees_v5',
   SCHEDULES: 'farmacia_escala_schedules_v20',
   OTHER_STORE_SCHEDULES: 'farmacia_escala_other_schedules_v20',
   ADMIN_PIN: 'farmacia_escala_admin_pin_v2',
@@ -1061,9 +1061,9 @@ const DEFAULT_EMPLOYEES = [
     name: 'CARLOS',
     role: 'Plantonista',
     prefShift: 'PLANTONISTA',
-    plantaoDays: ['SAT', 'SUN'],
+    plantaoDays: [],
     plantaoShift: '2',
-    onCallDays: ['SAT', 'SUN'],
+    onCallDays: [],
     onCallShift: '2',
     color: '#f97316',
     status: 'ACTIVE',
@@ -1097,9 +1097,9 @@ class Store {
           ...emp,
           role: emp.role === 'Folguista' ? 'Plantonista' : (emp.role || 'Plantonista'),
           prefShift: 'PLANTONISTA',
-          plantaoDays: emp.plantaoDays || ['SAT', 'SUN'],
+          plantaoDays: Array.isArray(emp.plantaoDays) ? emp.plantaoDays : [],
           plantaoShift: emp.plantaoShift || '2',
-          onCallDays: emp.onCallDays || ['SAT', 'SUN'],
+          onCallDays: Array.isArray(emp.onCallDays) ? emp.onCallDays : [],
           onCallShift: emp.onCallShift || '2'
         };
       }
@@ -1466,22 +1466,19 @@ class PharmacyScheduler {
     const numFridays = fridaysInMonth.length;
 
     // Regra de Priorização de Semanas para Folgas de Sexta:
-    // - 2 colaboradores em 4 semanas: semanas 2 e 3 (índices 1, 2) -> 1ª e 4ª semana sem folga.
-    // - 3 colaboradores em 4 semanas: semanas 2, 3 e 4 (índices 1, 2, 3) -> 1ª semana sem folga.
     // - 4 colaboradores em 4 semanas: todas as 4 semanas (índices 0, 1, 2, 3).
-    // - 4 colaboradores em 5 semanas: semanas 2, 3, 4 e 5 (índices 1, 2, 3, 4) -> 1ª semana sem folga.
-    // - 5 ou 6 colaboradores: 1ª semana sem folga verde (maior movimento de início de mês), folgas nas semanas 2, 3, 4 (e 5).
+    // - 4 colaboradores em 5 semanas: semanas 2, 3, 4 e 5 (índices 1, 2, 3, 4) -> 1ª semana sem folga verde.
     let candidateFridayIndices = [];
     if (numFridays === 4) {
       if (numEmps === 2) candidateFridayIndices = [1, 2];
       else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
       else if (numEmps === 4) candidateFridayIndices = [0, 1, 2, 3];
-      else candidateFridayIndices = [1, 2, 3]; // 5 ou 6 colaboradores em 4 semanas: 1ª semana livre
+      else candidateFridayIndices = [1, 2, 3];
     } else if (numFridays === 5) {
       if (numEmps === 2) candidateFridayIndices = [1, 2];
       else if (numEmps === 3) candidateFridayIndices = [1, 2, 3];
       else if (numEmps === 4) candidateFridayIndices = [1, 2, 3, 4];
-      else candidateFridayIndices = [1, 2, 3, 4]; // 5 ou 6 colaboradores em 5 semanas: 1ª semana livre
+      else candidateFridayIndices = [1, 2, 3, 4];
     } else {
       if (numEmps >= numFridays) {
         candidateFridayIndices = Array.from({ length: numFridays }, (_, i) => i);
@@ -1490,25 +1487,30 @@ class PharmacyScheduler {
       }
     }
 
-    // Âncora perpétua: Segunda-feira 24/08/2026 (Matriz Universal Fixa de 24 a 31 de Agosto)
-    const epochMonday = new Date(2026, 7, 24);
+    // Âncora perpétua da L2: Segunda-feira 02/11/2026 (mod4 === 0 na Semana 1 de Novembro/2026)
+    const epochMonday = new Date(2026, 10, 2);
 
     // Identifica se há alguém com preferência explícita de noite de Seg-Qui
     const explicitNightEmp = empsList.find(e => e.prefShift === 'NIGHT_WEEKDAY');
 
+    // Referências para equipe de 4 balconistas (L2: Dupla 1 = LIVIA/NATÁLIA, Dupla 2 = MATHEUS/SALETE)
+    const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
+    const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
+    const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
+    const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
+
     // ====================================================================
-    // MAPEAMENTO DE FOLGA VERDE (SEXTA-FEIRA) - GARANTIA: TODO FUNCIONÁRIO
-    // RECEBE EXATAMENTE 1 FOLGA VERDE POR MÊS.
+    // MAPEAMENTO DE FOLGA VERDE (SEXTA-FEIRA)
+    // REGRA MANDATÓRIA: Quem folga na sexta-feira (GREEN) OBRIGATORIAMENTE
+    // está de folga no Sábado e trabalha no Domingo dessa mesma semana.
     // ====================================================================
     const fridayOffMap = {}; // fDay -> Set of greenEmpNames
+    const satOffByFridayMap = {}; // fDay -> Array of employees off on Saturday & working Sunday
     const assignedGreenEmployees = new Set();
     const maxGreensPerFriday = (numEmps >= 5) ? 2 : 1;
 
-    // Inicializa todas as sextas com Sets vazios
     fridaysInMonth.forEach(fDay => { fridayOffMap[fDay] = new Set(); });
 
-    // --- PASSO 1: Para cada sexta candidata, determina quem folga no sábado
-    //     e atribui folga verde apenas a quem AINDA NÃO recebeu. ---
     candidateFridayIndices.forEach(fIdx => {
       const fDay = fridaysInMonth[fIdx];
       const mondayDate = new Date(year, month - 1, fDay - 4);
@@ -1518,10 +1520,9 @@ class PharmacyScheduler {
       const mod4 = ((globalWeekIdx % 4) + 4) % 4;
       const isEvenWeek = (globalWeekIdx % 2 === 0);
 
-      // Determina TODOS os funcionários que FOLGAM no sábado dessa semana
+      // Determina TODOS os funcionários que FOLGAM no sábado e TRABALHAM no domingo dessa semana
       let satOffEmps = [];
       if (numEmps === 1) {
-        // 1 func: folga sábado em semanas ÍMPARES (trabalha domingo)
         satOffEmps = !isEvenWeek ? [empsList[0]] : [];
       } else if (numEmps === 2) {
         satOffEmps = [isEvenWeek ? empsList[0] : empsList[1]];
@@ -1535,27 +1536,26 @@ class PharmacyScheduler {
           satOffEmps = [empsList[mod3]];
         }
       } else if (numEmps === 4) {
-        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
-        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
-        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
-        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
-
-        if (mod4 === 0) satOffEmps = [novataF, expNatalia];
-        else if (mod4 === 1) satOffEmps = [novatoM, expNatalia];
-        else if (mod4 === 2) satOffEmps = [novataF, expSalete];
+        // Metodologia Oficial L2 (Ciclo de 4 semanas):
+        // mod4===0: Sáb trabalham MATHEUS/SALETE | Folgam Sáb e trabalham Dom: NATÁLIA (prioridade GREEN) e LIVIA
+        // mod4===1: Sáb trabalham LIVIA/NATÁLIA  | Folgam Sáb e trabalham Dom: SALETE (prioridade GREEN) e MATHEUS
+        // mod4===2: Sáb trabalham SALETE/MATHEUS | Folgam Sáb e trabalham Dom: LIVIA (prioridade GREEN) e NATÁLIA
+        // mod4===3: Sáb trabalham NATÁLIA/LIVIA  | Folgam Sáb e trabalham Dom: MATHEUS (prioridade GREEN) e SALETE
+        if (mod4 === 0) satOffEmps = [expNatalia, novataF];
+        else if (mod4 === 1) satOffEmps = [expSalete, novatoM];
+        else if (mod4 === 2) satOffEmps = [novataF, expNatalia];
         else satOffEmps = [novatoM, expSalete];
       } else if (numEmps === 5) {
-        // Domingo: w3 e w4 trabalham → eles folgaram no sábado
         const w3 = empsList[(3 + globalWeekIdx * 2) % 5];
         const w4 = empsList[(4 + globalWeekIdx * 2) % 5];
         satOffEmps = [w3, w4];
       } else {
-        // 6+: metade folga no sábado
         const half = Math.ceil(numEmps / 2);
         satOffEmps = isEvenWeek ? empsList.slice(half) : empsList.slice(0, half);
       }
 
-      // Atribui verde a quem AINDA NÃO recebeu, respeitando o limite por sexta
+      satOffByFridayMap[fDay] = satOffEmps;
+
       let assigned = 0;
       satOffEmps.forEach(emp => {
         if (emp && assigned < maxGreensPerFriday && !assignedGreenEmployees.has(emp.name)) {
@@ -1566,23 +1566,14 @@ class PharmacyScheduler {
       });
     });
 
-    // --- PASSO 2: GARANTIA - qualquer funcionário que AINDA não recebeu folga verde
-    //     é forçado a receber numa sexta candidata disponível. ---
+    // --- PASSO 2: Se algum colaborador ainda não recebeu folga verde, só pode receber
+    //     em uma sexta candidata em que ele TAMBÉM esteja folgando no sábado e trabalhando no domingo. ---
     empsList.forEach(emp => {
       if (!assignedGreenEmployees.has(emp.name)) {
-        // Tenta sexta candidata com espaço
         for (const fIdx of candidateFridayIndices) {
           const fDay = fridaysInMonth[fIdx];
-          if (fridayOffMap[fDay].size < maxGreensPerFriday) {
-            fridayOffMap[fDay].add(emp.name);
-            assignedGreenEmployees.add(emp.name);
-            break;
-          }
-        }
-        // Se ainda não atribuído, aceita qualquer sexta candidata (acima do limite)
-        if (!assignedGreenEmployees.has(emp.name)) {
-          for (const fIdx of candidateFridayIndices) {
-            const fDay = fridaysInMonth[fIdx];
+          const allowedSatOff = satOffByFridayMap[fDay] || [];
+          if (fridayOffMap[fDay].size < maxGreensPerFriday && allowedSatOff.some(e => e && e.name === emp.name)) {
             fridayOffMap[fDay].add(emp.name);
             assignedGreenEmployees.add(emp.name);
             break;
@@ -1607,80 +1598,52 @@ class PharmacyScheduler {
       const isEvenWeek = (globalWeekIdx % 2 === 0);
 
       if (numEmps === 1) {
-        // ==========================================
-        // --- CASO 1 FUNCIONÁRIO ---
-        // Alterna: Semana Par → T1 + trabalha Sáb + folga Dom
-        //          Semana Ímpar → T3 + folga Sáb + trabalha Dom (GREEN na Sexta)
-        // ==========================================
         const emp = empsList[0];
-        const sIdx = isEvenWeek ? 0 : 2; // T1 (par) ou T3 (ímpar)
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          const isGreen = (dayOfWeek === 5 && fridayOffMap[day] && fridayOffMap[day].has(emp.name));
-          slots[sIdx].push({ employeeName: emp.name, color: isGreen ? 'GREEN' : 'NORMAL' });
-        } else if (dayOfWeek === 6) {
-          // Sábado: trabalha em semanas pares, folga em ímpares
-          if (isEvenWeek) {
-            slots[sIdx].push({ employeeName: emp.name, color: 'RED' });
+        const sIdx = isEvenWeek ? 0 : 2;
+        if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+          slots[sIdx].push({ employeeName: emp.name, color: 'NORMAL' });
+        } else if (dayOfWeek === 5) {
+          const isGreen = fridayOffMap[day] && fridayOffMap[day].has(emp.name);
+          if (isGreen) {
+            slots[1].push({ employeeName: emp.name, color: 'GREEN' });
+          } else {
+            slots[sIdx].push({ employeeName: emp.name, color: 'NORMAL' });
           }
-        } else if (dayOfWeek === 0) {
-          // Domingo: trabalha em semanas ímpares (folgou sábado), folga em pares
-          if (!isEvenWeek) {
-            slots[sIdx].push({ employeeName: emp.name, color: 'RED' });
-          }
+        } else if (dayOfWeek === 6 && isEvenWeek) {
+          slots[0].push({ employeeName: emp.name, color: 'RED' });
+        } else if (dayOfWeek === 0 && !isEvenWeek) {
+          slots[0].push({ employeeName: emp.name, color: 'RED' });
         }
 
-
       } else if (numEmps === 2) {
-        // ==========================================
-        // --- CASO 2 FUNCIONÁRIOS (1 NO T1, 1 NO T3) ---
-        // ==========================================
         const empA = empsList[0];
         const empB = empsList[1];
-        const hasGreen = fridayOffMap[day] && fridayOffMap[day].size > 0;
+        const t1Emp = isEvenWeek ? empA : empB;
+        const t3Emp = isEvenWeek ? empB : empA;
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-          const t1 = isEvenWeek ? empA : empB;
-          const t3 = isEvenWeek ? empB : empA;
-          slots[0].push({ employeeName: t1.name, color: 'NORMAL' });
-          slots[2].push({ employeeName: t3.name, color: 'NORMAL' });
-
+          slots[0].push({ employeeName: t1Emp.name, color: 'NORMAL' });
+          slots[2].push({ employeeName: t3Emp.name, color: 'NORMAL' });
         } else if (dayOfWeek === 5) {
-          if (hasGreen) {
-            const greenEmpName = Array.from(fridayOffMap[day])[0];
-            const greenWorker = (empA.name === greenEmpName) ? empA : empB;
-            const otherWorker = (empA.name === greenEmpName) ? empB : empA;
-            slots[0].push({ employeeName: greenWorker.name, color: 'GREEN' });
-            slots[2].push({ employeeName: otherWorker.name, color: 'NORMAL' });
+          const isGreenT1 = fridayOffMap[day] && fridayOffMap[day].has(t1Emp.name);
+          const isGreenT3 = fridayOffMap[day] && fridayOffMap[day].has(t3Emp.name);
+          if (isGreenT1) {
+            slots[1].push({ employeeName: t1Emp.name, color: 'GREEN' });
           } else {
-            const t1 = isEvenWeek ? empA : empB;
-            const t3 = isEvenWeek ? empB : empA;
-            slots[0].push({ employeeName: t1.name, color: 'NORMAL' });
-            slots[2].push({ employeeName: t3.name, color: 'NORMAL' });
+            slots[0].push({ employeeName: t1Emp.name, color: 'NORMAL' });
           }
-
+          if (isGreenT3) {
+            slots[1].push({ employeeName: t3Emp.name, color: 'GREEN' });
+          } else {
+            slots[2].push({ employeeName: t3Emp.name, color: 'NORMAL' });
+          }
         } else if (dayOfWeek === 6) {
-          if (isEvenWeek) {
-            const sIdx = (mod4 === 0) ? 2 : 0;
-            slots[sIdx].push({ employeeName: empB.name, color: 'RED' });
-          } else {
-            const sIdx = (mod4 === 1) ? 2 : 0;
-            slots[sIdx].push({ employeeName: empA.name, color: 'RED' });
-          }
-
+          slots[0].push({ employeeName: t3Emp.name, color: 'RED' });
         } else if (dayOfWeek === 0) {
-          if (isEvenWeek) {
-            const sIdx = (mod4 === 0) ? 0 : 2;
-            slots[sIdx].push({ employeeName: empA.name, color: 'RED' });
-          } else {
-            const sIdx = (mod4 === 1) ? 0 : 2;
-            slots[sIdx].push({ employeeName: empB.name, color: 'RED' });
-          }
+          slots[0].push({ employeeName: t1Emp.name, color: 'RED' });
         }
 
       } else if (numEmps === 3) {
-        // ==========================================
-        // --- CASO 3 FUNCIONÁRIOS (1 NO T1, 2 NO T3) ---
-        // ==========================================
         if (explicitNightEmp) {
           const rotEmps = empsList.filter(e => e !== explicitNightEmp);
           const rotEmp1 = rotEmps[0] || empsList[0];
@@ -1733,8 +1696,7 @@ class PharmacyScheduler {
             }
           }
         } else {
-          // Sem preferência fixa: RODÍZIO TOTAL EQUITATIVO DE TODOS OS 3 FUNCIONÁRIOS
-          const satOffEmp = empsList[mod3]; // Folga no Sábado e trabalha no Domingo
+          const satOffEmp = empsList[mod3];
           const satWork1 = empsList[(mod3 + 1) % 3];
           const satWork2 = empsList[(mod3 + 2) % 3];
 
@@ -1742,7 +1704,6 @@ class PharmacyScheduler {
             slots[0].push({ employeeName: satOffEmp.name, color: 'NORMAL' });
             slots[2].push({ employeeName: satWork1.name, color: 'NORMAL' });
             slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
-
           } else if (dayOfWeek === 5) {
             const hasGreen = fridayOffMap[day] && fridayOffMap[day].has(satOffEmp.name);
             if (hasGreen) {
@@ -1754,43 +1715,32 @@ class PharmacyScheduler {
               slots[0].push({ employeeName: satWork1.name, color: 'NORMAL' });
               slots[2].push({ employeeName: satWork2.name, color: 'NORMAL' });
             }
-
           } else if (dayOfWeek === 6) {
-            // Sábado: os outros 2 trabalham (1 no T1, 1 no T3) e satOffEmp FOLGA
             slots[0].push({ employeeName: satWork1.name, color: 'RED' });
             slots[2].push({ employeeName: satWork2.name, color: 'RED' });
-
           } else if (dayOfWeek === 0) {
-            // Domingo: quem folgou no sábado trabalha no Domingo
             slots[0].push({ employeeName: satOffEmp.name, color: 'RED' });
           }
         }
 
       } else if (numEmps === 4) {
         // ==========================================
-        // --- CASO 4 FUNCIONÁRIOS (2 NO T1, 2 NO T3, T2 VAZIO) ---
-        // REGRA DE ALTERNÂNCIA E PRIORIZAÇÃO DA NOITE:
-        // - Alternância semanal contínua de turnos (T1 na semana N -> T3 na semana N+1).
-        // - Prioridade no Turno da Noite (T3) para homens (MATHEUS) em eventuais repetições.
+        // --- CASO 4 FUNCIONÁRIOS (METODOLOGIA OFICIAL L2 - NOVEMBRO/2026 E PRÓXIMOS MESES) ---
+        // Duplas fixas:
+        // - Dupla A: LIVIA / NATÁLIA
+        // - Dupla B: MATHEUS / SALETE
+        // Semanas pares (mod4 === 0, 2): Seg-Qui T1 = LIVIA / NATÁLIA | T3 = MATHEUS / SALETE
+        // Semanas ímpares (mod4 === 1, 3): Seg-Qui T1 = MATHEUS / SALETE | T3 = LIVIA / NATÁLIA
+        // Sexta-feira: quem está de Folga Verde (GREEN no 2º Turno) está sempre no grupo da manhã (T1),
+        //              FOLGA no Sábado e TRABALHA no Domingo!
         // ==========================================
-        const novatoM = empsList.find(e => (e.name || '').toUpperCase().includes('MATHEUS')) || empsList[0];
-        const novataF = empsList.find(e => ((e.name || '').toUpperCase().includes('LIVIA') || (e.name || '').toUpperCase().includes('LÍVIA'))) || empsList[1];
-        const expSalete = empsList.find(e => (e.name || '').toUpperCase().includes('SALETE')) || empsList[2];
-        const expNatalia = empsList.find(e => ((e.name || '').toUpperCase().includes('NATALIA') || (e.name || '').toUpperCase().includes('NATÁLIA'))) || empsList[3];
-
         let t1Group, t3Group;
-        if (mod4 === 0) {
-          t1Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA (Semana 24 a 28/08)
-          t3Group = [novatoM, expSalete]; // MATHEUS + SALETE
-        } else if (mod4 === 1) {
-          t1Group = [novatoM, expSalete]; // MATHEUS + SALETE (Semana 31/08 a 04/09)
-          t3Group = [novataF, expNatalia]; // LÍVIA + NATÁLIA
-        } else if (mod4 === 2) {
-          t1Group = [novataF, expSalete]; // LÍVIA + SALETE
-          t3Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
+        if (mod4 === 0 || mod4 === 2) {
+          t1Group = [novataF, expNatalia]; // LIVIA / NATÁLIA
+          t3Group = [novatoM, expSalete];  // MATHEUS / SALETE
         } else {
-          t1Group = [novatoM, expNatalia]; // MATHEUS + NATÁLIA
-          t3Group = [novataF, expSalete]; // LÍVIA + SALETE
+          t1Group = [novatoM, expSalete];  // MATHEUS / SALETE
+          t3Group = [novataF, expNatalia]; // LIVIA / NATÁLIA
         }
 
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
@@ -1816,48 +1766,46 @@ class PharmacyScheduler {
           });
 
         } else if (dayOfWeek === 6) {
+          // Sábado: trabalha a dupla que estava no 3º Turno na semana (invertendo T1/T3 a cada 2 semanas)
           let satT1, satT3;
           if (mod4 === 0) {
-            satT1 = expSalete;
-            satT3 = novatoM;
+            satT1 = novatoM;    // MATHEUS
+            satT3 = expSalete;  // SALETE
           } else if (mod4 === 1) {
-            satT1 = expSalete;
-            satT3 = novataF;
+            satT1 = novataF;    // LIVIA
+            satT3 = expNatalia; // NATÁLIA
           } else if (mod4 === 2) {
-            satT1 = expNatalia;
-            satT3 = novatoM;
+            satT1 = expSalete;  // SALETE
+            satT3 = novatoM;    // MATHEUS
           } else {
-            satT1 = expNatalia;
-            satT3 = novataF;
+            satT1 = expNatalia; // NATÁLIA
+            satT3 = novataF;    // LIVIA
           }
           slots[0].push({ employeeName: satT1.name, color: 'RED' });
           slots[2].push({ employeeName: satT3.name, color: 'RED' });
 
         } else if (dayOfWeek === 0) {
+          // Domingo: trabalha a dupla que folgou no sábado (invertendo T1/T3 a cada 2 semanas)
           let sunT1, sunT3;
           if (mod4 === 0) {
-            sunT1 = expNatalia;
-            sunT3 = novataF;
+            sunT1 = novataF;    // LIVIA
+            sunT3 = expNatalia; // NATÁLIA
           } else if (mod4 === 1) {
-            sunT1 = expNatalia;
-            sunT3 = novatoM;
+            sunT1 = novatoM;    // MATHEUS
+            sunT3 = expSalete;  // SALETE
           } else if (mod4 === 2) {
-            sunT1 = expSalete;
-            sunT3 = novataF;
+            sunT1 = expNatalia; // NATÁLIA
+            sunT3 = novataF;    // LIVIA
           } else {
-            sunT1 = expSalete;
-            sunT3 = novatoM;
+            sunT1 = expSalete;  // SALETE
+            sunT3 = novatoM;    // MATHEUS
           }
           slots[0].push({ employeeName: sunT1.name, color: 'RED' });
           slots[2].push({ employeeName: sunT3.name, color: 'RED' });
         }
 
       } else if (numEmps === 5) {
-        // ==========================================
-        // --- CASO 5 FUNCIONÁRIOS (ÚNICO CASO COM 2º TURNO: 2 NO T1, 1 NO T2, 2 NO T3) ---
-        // ==========================================
         const baseShiftMap = [0, 0, 1, 2, 2];
-
         if (dayOfWeek >= 1 && dayOfWeek <= 5) {
           empsList.forEach((emp, empIdx) => {
             let sIdx = baseShiftMap[(empIdx + globalWeekIdx) % 5];
@@ -1879,9 +1827,6 @@ class PharmacyScheduler {
         }
 
       } else {
-        // ==========================================
-        // --- CASO 6 OU MAIS FUNCIONÁRIOS (3 NO T1, 3 NO T3, T2 VAZIO) ---
-        // ==========================================
         const half = Math.ceil(numEmps / 2);
         const groupA = empsList.slice(0, half);
         const groupB = empsList.slice(half);
@@ -1891,11 +1836,9 @@ class PharmacyScheduler {
           const t3Group = isEvenWeek ? groupB : groupA;
           t1Group.forEach(e => slots[0].push({ employeeName: e.name, color: 'NORMAL' }));
           t3Group.forEach(e => slots[2].push({ employeeName: e.name, color: 'NORMAL' }));
-
         } else if (dayOfWeek === 5) {
           const t1Group = isEvenWeek ? groupB : groupA;
           const t3Group = isEvenWeek ? groupA : groupB;
-
           t1Group.forEach(e => {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
             slots[0].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
@@ -1904,19 +1847,15 @@ class PharmacyScheduler {
             const isGreen = fridayOffMap[day] && fridayOffMap[day].has(e.name);
             slots[2].push({ employeeName: e.name, color: isGreen ? 'GREEN' : 'NORMAL' });
           });
-
         } else if (dayOfWeek === 6) {
           const satGroup = isEvenWeek ? groupA : groupB;
-          // Distribui entre 1º e 3º Turnos (2 no T1, 1 no T3 ou proporcional)
           const satT1Count = Math.ceil(satGroup.length / 2);
           satGroup.forEach((e, idx) => {
             const sIdx = (idx < satT1Count) ? 0 : 2;
             slots[sIdx].push({ employeeName: e.name, color: 'RED' });
           });
-
         } else if (dayOfWeek === 0) {
           const sunGroup = isEvenWeek ? groupB : groupA;
-          // Os que folgaram no sábado trabalham no domingo
           const sunT1Count = Math.floor(sunGroup.length / 2);
           sunGroup.forEach((e, idx) => {
             const sIdx = (idx < sunT1Count) ? 0 : 2;
@@ -1925,18 +1864,18 @@ class PharmacyScheduler {
         }
       }
 
-      // Adicionar Plantonistas se houver
+      // Adicionar Plantonistas apenas se tiverem dias explicitamente configurados
       plantonistas.forEach(p => {
         const pName = (p.name || '').trim().toUpperCase();
-        const pDays = p.onCallDays || ['SAT', 'SUN'];
+        const pDays = Array.isArray(p.onCallDays) ? p.onCallDays : (Array.isArray(p.plantaoDays) ? p.plantaoDays : []);
         const dayStrMap = { 5: 'FRI', 6: 'SAT', 0: 'SUN' };
         if (dayStrMap[dayOfWeek] && pDays.includes(dayStrMap[dayOfWeek])) {
-          const shiftIdx = (p.onCallShift === '3' ? 2 : (p.onCallShift === '2' ? 1 : 0));
+          const shiftVal = p.onCallShift || p.plantaoShift || '2';
+          const shiftIdx = (shiftVal === '3' ? 2 : (shiftVal === '2' ? 1 : 0));
           slots[shiftIdx].push({ employeeName: pName, color: (dayOfWeek === 0 || dayOfWeek === 6) ? 'RED' : 'NORMAL' });
         }
       });
 
-      // Aplicação Universal de Preferências de Turno (NIGHT_WEEKDAY, SHIFT_1, SHIFT_2, SHIFT_3)
       this.enforceShiftPreferences(slots, dayOfWeek, day, fridayOffMap, empsList);
 
       daysSchedule[dayKey] = {
@@ -1982,17 +1921,17 @@ class PharmacyScheduler {
 
       if (emp.prefShift === 'NIGHT_WEEKDAY') {
         if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-          targetSlotIdx = 2; // 3º Turno (Noite) de Seg a Qui
+          targetSlotIdx = 2;
         } else if (dayOfWeek === 5) {
           const isGreen = (workerObj.color === 'GREEN' || (fridayOffMap[day] && fridayOffMap[day].has(empName)));
-          targetSlotIdx = isGreen ? 1 : 0; // 1º Turno (Manhã Sexta) ou 2º Turno se folga verde
+          targetSlotIdx = isGreen ? 1 : 0;
         }
       } else if (emp.prefShift === 'SHIFT_1') {
-        targetSlotIdx = 0; // 1º Turno (Manhã)
+        targetSlotIdx = 0;
       } else if (emp.prefShift === 'SHIFT_2') {
-        targetSlotIdx = 1; // 2º Turno (Intermediário)
+        targetSlotIdx = 1;
       } else if (emp.prefShift === 'SHIFT_3') {
-        targetSlotIdx = 2; // 3º Turno (Noite)
+        targetSlotIdx = 2;
       }
 
       if (targetSlotIdx !== -1 && targetSlotIdx !== currentSlotIdx) {
