@@ -2253,3 +2253,318 @@ body.is-admin .calendar-day-cell.has-copied-active .day-cell-actions {
   text-decoration-color: #b91c1c !important;
   text-decoration-thickness: 2px !important;
 }
+
+
+/* ==========================================================================
+   RESPONSIVIDADE MOBILE & TABLET DA ESCALA:
+   - Cards do tamanho exato dos nomes (sem cortar letras)
+   - Barra de rolagem horizontal e vertical suave
+   - Cabeçalho SEG-DOM / DOM-SÁB fixo (sticky) ao rolar verticalmente
+   - Zoom de pinça (2 dedos), duplo toque e botão Ajustar à Tela / 100%
+   - Modo Paisagem (tela deitada) otimizado
+   ========================================================================== */
+.mobile-calendar-controls {
+  display: none;
+}
+
+.calendar-scroll-viewport {
+  width: 100%;
+  overflow: visible;
+}
+
+@media (max-width: 932px) {
+  .app-main {
+    padding: 0.45rem 0.45rem !important;
+    gap: 0.45rem !important;
+  }
+
+  .calendar-card {
+    padding: 0.45rem 0.5rem !important;
+    overflow: visible !important;
+  }
+
+  .mobile-calendar-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+    padding: 0.35rem 0.55rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+
+  .mobile-cal-hint {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .mobile-cal-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .btn-mobile-cal {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    border-radius: 6px;
+    padding: 0.22rem 0.48rem;
+    font-size: 0.69rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.22rem;
+    min-height: 28px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .btn-mobile-cal:active {
+    transform: scale(0.96);
+  }
+
+  .btn-mobile-cal.active-fit {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #047857;
+  }
+
+  .btn-mobile-cal.btn-today-focus {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #15803d;
+  }
+
+  .mobile-zoom-stepper {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+    height: 28px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .btn-zoom-step {
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 900;
+    width: 26px;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-zoom-step:active {
+    background: #f1f5f9;
+  }
+
+  .mobile-zoom-value {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #334155;
+    padding: 0 0.32rem;
+    min-width: 38px;
+    text-align: center;
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .calendar-scroll-viewport {
+    --mobile-base-col: 134px;
+    --mobile-scale: 1;
+    --mobile-effective-col: calc(var(--mobile-base-col, 134px) * var(--mobile-scale, 1));
+    width: 100%;
+    max-height: 75vh;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y pinch-zoom;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 0.25rem;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+    position: relative;
+  }
+
+  .calendar-scroll-viewport::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+
+  .calendar-scroll-viewport::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 999px;
+  }
+
+  .calendar-scroll-viewport::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 999px;
+  }
+
+  .calendar-scroll-viewport::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  .calendar-scroll-viewport .calendar-table {
+    width: max-content !important;
+    min-width: 100% !important;
+    gap: calc(0.28rem * var(--mobile-scale, 1)) !important;
+  }
+
+  .calendar-scroll-viewport .calendar-header-row,
+  .calendar-scroll-viewport .calendar-grid {
+    grid-template-columns: repeat(7, minmax(var(--mobile-effective-col, 134px), 1fr)) !important;
+    gap: calc(0.28rem * var(--mobile-scale, 1)) !important;
+    width: max-content !important;
+    min-width: 100% !important;
+  }
+
+  .calendar-scroll-viewport .calendar-header-row {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background: #ffffff;
+    padding-top: 2px;
+    padding-bottom: 3px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  }
+
+  .calendar-scroll-viewport .col-header {
+    font-size: calc(0.72rem * var(--mobile-scale, 1)) !important;
+    padding: calc(0.38rem * var(--mobile-scale, 1)) calc(0.2rem * var(--mobile-scale, 1)) !important;
+    white-space: nowrap !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  .calendar-scroll-viewport .calendar-day-cell {
+    min-width: var(--mobile-effective-col, 134px) !important;
+    min-height: calc(78px * var(--mobile-scale, 1)) !important;
+    padding: calc(0.22rem * var(--mobile-scale, 1)) calc(0.26rem * var(--mobile-scale, 1)) !important;
+    gap: calc(0.16rem * var(--mobile-scale, 1)) !important;
+    overflow: visible !important;
+  }
+
+  .calendar-scroll-viewport .day-header-top-row {
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: calc(0.18rem * var(--mobile-scale, 1)) !important;
+  }
+
+  .calendar-scroll-viewport .day-header-badge {
+    width: calc(20px * var(--mobile-scale, 1)) !important;
+    height: calc(20px * var(--mobile-scale, 1)) !important;
+    font-size: calc(0.68rem * var(--mobile-scale, 1)) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .calendar-scroll-viewport .today-badge-tag,
+  .calendar-scroll-viewport .holiday-badge-tag,
+  .calendar-scroll-viewport .birthday-badge-tag,
+  .calendar-scroll-viewport .action-badge-tag {
+    font-size: calc(0.56rem * var(--mobile-scale, 1)) !important;
+    padding: calc(0.05rem * var(--mobile-scale, 1)) calc(0.28rem * var(--mobile-scale, 1)) !important;
+    white-space: nowrap !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .calendar-scroll-viewport .day-slots-container {
+    gap: calc(0.15rem * var(--mobile-scale, 1)) !important;
+  }
+
+  .calendar-scroll-viewport .slot-item {
+    font-size: calc(0.70rem * var(--mobile-scale, 1)) !important;
+    padding: calc(0.13rem * var(--mobile-scale, 1)) calc(0.24rem * var(--mobile-scale, 1)) !important;
+    min-height: calc(20px * var(--mobile-scale, 1)) !important;
+    gap: calc(0.16rem * var(--mobile-scale, 1)) !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .calendar-scroll-viewport .worker-chip {
+    font-size: calc(0.70rem * var(--mobile-scale, 1)) !important;
+    padding: calc(0.03rem * var(--mobile-scale, 1)) calc(0.15rem * var(--mobile-scale, 1)) !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .calendar-scroll-viewport .slot-slash {
+    font-size: calc(0.65rem * var(--mobile-scale, 1)) !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-cal-hint {
+    font-size: 0.64rem;
+  }
+}
+
+/* IDEIA 2: OTIMIZAÇÃO PARA MODO PAISAGEM (TELA DEITADA) NO CELULAR */
+@media (max-width: 932px) and (orientation: landscape) {
+  .app-topbar {
+    padding: 0.25rem 0.5rem !important;
+  }
+
+  .app-main {
+    padding: 0.25rem 0.4rem !important;
+  }
+
+  .calendar-card {
+    padding: 0.35rem 0.45rem !important;
+  }
+
+  .mobile-calendar-controls {
+    margin-bottom: 0.25rem;
+    padding: 0.22rem 0.45rem;
+  }
+
+  .calendar-scroll-viewport {
+    max-height: 85vh !important;
+  }
+}
+
+/* GARANTIA DE CAPTURA COMPLETA (100% SEM CORTES) AO EXPORTAR PNG/PDF PELO CELULAR */
+.calendar-card.is-exporting-capture,
+.calendar-card.is-exporting-capture .calendar-scroll-viewport {
+  overflow: visible !important;
+  max-height: none !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  --mobile-scale: 1 !important;
+  border: none !important;
+}

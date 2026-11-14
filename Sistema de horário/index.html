@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.35, maximum-scale=5.0, user-scalable=yes">
   <title>Farmácia Bethel - Escala de Horários</title>
   <!-- Google Fonts & Lucide Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   
-  <link rel="stylesheet" href="css/style.css?v=11.0">
+  <link rel="stylesheet" href="css/style.css?v=12.0">
   <link rel="stylesheet" href="css/print.css?v=10.0" media="print">
 </head>
 <body>
@@ -205,22 +205,42 @@
           </div>
         </div>
 
-        <!-- Modern Calendar Grid -->
-        <div class="calendar-table">
-          <!-- Day of Week Headers (Dinâmico: Dom-Sáb no público, Seg-Dom no admin) -->
-          <div id="calendar-header-row" class="calendar-header-row">
-            <div class="col-header weekend-col">DOMINGO</div>
-            <div class="col-header weekday-col">SEGUNDA</div>
-            <div class="col-header weekday-col">TERÇA</div>
-            <div class="col-header weekday-col">QUARTA</div>
-            <div class="col-header weekday-col">QUINTA</div>
-            <div class="col-header weekday-col">SEXTA</div>
-            <div class="col-header weekend-col">SÁBADO</div>
+        <!-- BARRA MOBILE/TABLET: ZOOM, AJUSTAR À TELA E FOCO NO DIA DE HOJE -->
+        <div id="mobile-calendar-controls" class="mobile-calendar-controls no-print" data-html2canvas-ignore="true">
+          <span class="mobile-cal-hint">📱 Arraste p/ os lados • 2 dedos ou 2 toques p/ zoom</span>
+          <div class="mobile-cal-actions">
+            <button type="button" id="btn-mobile-scroll-today" class="btn-mobile-cal btn-today-focus" title="Ir para o card do dia de Hoje">
+              📍 Hoje
+            </button>
+            <button type="button" id="btn-mobile-zoom-fit" class="btn-mobile-cal" title="Alternar entre encaixar a semana na tela ou tamanho 100%">
+              🔍 Ajustar à tela
+            </button>
+            <div class="mobile-zoom-stepper" title="Ajustar zoom da escala">
+              <button type="button" id="btn-mobile-zoom-out" class="btn-zoom-step" aria-label="Diminuir zoom">−</button>
+              <span id="mobile-zoom-label" class="mobile-zoom-value" title="Toque para voltar a 100%">100%</span>
+              <button type="button" id="btn-mobile-zoom-in" class="btn-zoom-step" aria-label="Aumentar zoom">+</button>
+            </div>
           </div>
+        </div>
 
-          <!-- Dynamic Calendar Days Grid -->
-          <div id="calendar-grid" class="calendar-grid">
-            <!-- Rendered dynamically by calendar.js -->
+        <!-- Modern Calendar Grid (Scroll Horizontal/Vertical + Pinch Zoom no Mobile) -->
+        <div id="calendar-scroll-viewport" class="calendar-scroll-viewport">
+          <div class="calendar-table">
+            <!-- Day of Week Headers (Dinâmico: Dom-Sáb no público, Seg-Dom no admin) -->
+            <div id="calendar-header-row" class="calendar-header-row">
+              <div class="col-header weekend-col">DOMINGO</div>
+              <div class="col-header weekday-col">SEGUNDA</div>
+              <div class="col-header weekday-col">TERÇA</div>
+              <div class="col-header weekday-col">QUARTA</div>
+              <div class="col-header weekday-col">QUINTA</div>
+              <div class="col-header weekday-col">SEXTA</div>
+              <div class="col-header weekend-col">SÁBADO</div>
+            </div>
+
+            <!-- Dynamic Calendar Days Grid -->
+            <div id="calendar-grid" class="calendar-grid">
+              <!-- Rendered dynamically by calendar.js -->
+            </div>
           </div>
         </div>
 
@@ -2377,15 +2397,265 @@ class CalendarManager {
   }
 
   init() {
+    this.mobileScale = 1;
+    this.mobileBaseColWidth = 134;
+    this.isMobileFitActive = false;
     this.bindEvents();
+    this.initMobileScaleAndScroll();
     this.startRealtimeClock();
     this.render();
     setTimeout(() => {
-      const todayCell = document.querySelector('.calendar-day-cell.is-today');
-      if (todayCell) {
-        todayCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      this.scrollToTodayCard(true);
+    }, 180);
+  }
+
+  initMobileScaleAndScroll() {
+    const viewport = document.getElementById('calendar-scroll-viewport');
+    const btnFit = document.getElementById('btn-mobile-zoom-fit');
+    const btnZoomIn = document.getElementById('btn-mobile-zoom-in');
+    const btnZoomOut = document.getElementById('btn-mobile-zoom-out');
+    const btnZoomReset = document.getElementById('mobile-zoom-label');
+    const btnScrollToday = document.getElementById('btn-mobile-scroll-today');
+
+    btnFit?.addEventListener('click', () => {
+      this.toggleMobileFitToScreen();
+    });
+
+    btnZoomIn?.addEventListener('click', () => {
+      this.isMobileFitActive = false;
+      this.setMobileScale((this.mobileScale || 1) + 0.12, null, true);
+    });
+
+    btnZoomOut?.addEventListener('click', () => {
+      this.isMobileFitActive = false;
+      this.setMobileScale((this.mobileScale || 1) - 0.12, null, true);
+    });
+
+    btnZoomReset?.addEventListener('click', () => {
+      this.isMobileFitActive = false;
+      this.setMobileScale(1, null, true);
+    });
+
+    btnScrollToday?.addEventListener('click', () => {
+      const now = new Date();
+      if (this.currentYear !== now.getFullYear() || this.currentMonth !== (now.getMonth() + 1)) {
+        this.goToToday();
+      } else {
+        this.scrollToTodayCard(true);
       }
-    }, 150);
+    });
+
+    if (viewport) {
+      let pinchStartDist = 0;
+      let pinchStartScale = 1;
+      let isPinching = false;
+      let lastTapTime = 0;
+      let lastTapX = 0;
+      let lastTapY = 0;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchMoved = false;
+
+      viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          isPinching = true;
+          const dx = e.touches[1].clientX - e.touches[0].clientX;
+          const dy = e.touches[1].clientY - e.touches[0].clientY;
+          pinchStartDist = Math.hypot(dx, dy);
+          pinchStartScale = this.mobileScale || 1;
+        } else if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchMoved = false;
+        }
+      }, { passive: true });
+
+      viewport.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && pinchStartDist > 12) {
+          isPinching = true;
+          e.preventDefault();
+          const dx = e.touches[1].clientX - e.touches[0].clientX;
+          const dy = e.touches[1].clientY - e.touches[0].clientY;
+          const currDist = Math.hypot(dx, dy);
+          const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+          const nextScale = pinchStartScale * (currDist / pinchStartDist);
+          this.isMobileFitActive = false;
+          this.setMobileScale(nextScale, { clientX: midX, clientY: midY }, true);
+        } else if (e.touches.length === 1) {
+          const dx = Math.abs(e.touches[0].clientX - touchStartX);
+          const dy = Math.abs(e.touches[0].clientY - touchStartY);
+          if (dx > 12 || dy > 12) {
+            touchMoved = true;
+          }
+        }
+      }, { passive: false });
+
+      viewport.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2 && isPinching) {
+          if (e.touches.length === 0) {
+            setTimeout(() => { isPinching = false; }, 80);
+          }
+          return;
+        }
+
+        // Ideia 3: Duplo toque rápido com 1 dedo no card para dar zoom (apenas fora do modo edição Admin)
+        if (!this.store.isAdmin() && !touchMoved && e.changedTouches.length === 1) {
+          const touch = e.changedTouches[0];
+          const dayCell = touch.target?.closest ? touch.target.closest('.calendar-day-cell:not(.other-month)') : null;
+          const isInteractiveBadge = touch.target?.closest ? touch.target.closest('.birthday-badge-tag, button, a') : null;
+          if (dayCell && !isInteractiveBadge) {
+            const nowMs = Date.now();
+            const dt = nowMs - lastTapTime;
+            const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+            if (dt > 40 && dt < 300 && dist < 32) {
+              e.preventDefault();
+              lastTapTime = 0;
+              this.isMobileFitActive = false;
+              const cur = this.mobileScale || 1;
+              const targetScale = cur < 0.92 ? 1.0 : (cur < 1.22 ? 1.35 : 1.0);
+              this.setMobileScale(targetScale, { clientX: touch.clientX, clientY: touch.clientY }, true);
+              return;
+            }
+            lastTapTime = nowMs;
+            lastTapX = touch.clientX;
+            lastTapY = touch.clientY;
+          }
+        }
+      }, { passive: false });
+    }
+
+    const handleViewportResize = () => {
+      if (window.innerWidth <= 932) {
+        this.measureAndSyncMobileColumnWidths();
+      }
+    };
+    window.addEventListener('resize', handleViewportResize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleViewportResize, 180);
+    });
+  }
+
+  computeMobileFitScale() {
+    const viewport = document.getElementById('calendar-scroll-viewport');
+    const availW = Math.max(260, ((viewport && viewport.clientWidth) || window.innerWidth) - 10);
+    const baseCol = this.mobileBaseColWidth || 134;
+    const totalNaturalW = (baseCol * 7) + (6 * 4.5);
+    return Math.max(0.35, Math.min(1.0, +(availW / totalNaturalW).toFixed(3)));
+  }
+
+  toggleMobileFitToScreen() {
+    const fitScale = this.computeMobileFitScale();
+    if (!this.isMobileFitActive && Math.abs((this.mobileScale || 1) - fitScale) > 0.04) {
+      this.isMobileFitActive = true;
+      this.setMobileScale(fitScale, null, true);
+      const viewport = document.getElementById('calendar-scroll-viewport');
+      if (viewport) viewport.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      this.isMobileFitActive = false;
+      this.setMobileScale(1, null, true);
+      setTimeout(() => this.scrollToTodayCard(true), 60);
+    }
+  }
+
+  setMobileScale(newScale, focalPoint = null, keepFitFlag = false) {
+    const viewport = document.getElementById('calendar-scroll-viewport');
+    if (!viewport) return;
+    const clamped = Math.max(0.35, Math.min(2.2, +Number(newScale || 1).toFixed(3)));
+    const prevScale = this.mobileScale || 1;
+
+    if (focalPoint && Math.abs(clamped - prevScale) > 0.002) {
+      const rect = viewport.getBoundingClientRect();
+      const offsetX = focalPoint.clientX - rect.left;
+      const offsetY = focalPoint.clientY - rect.top;
+      const contentX = viewport.scrollLeft + offsetX;
+      const contentY = viewport.scrollTop + offsetY;
+
+      this.mobileScale = clamped;
+      viewport.style.setProperty('--mobile-scale', String(clamped));
+
+      const ratio = clamped / prevScale;
+      viewport.scrollLeft = Math.max(0, (contentX * ratio) - offsetX);
+      viewport.scrollTop = Math.max(0, (contentY * ratio) - offsetY);
+    } else {
+      this.mobileScale = clamped;
+      viewport.style.setProperty('--mobile-scale', String(clamped));
+    }
+
+    if (!keepFitFlag) {
+      const fitScale = this.computeMobileFitScale();
+      this.isMobileFitActive = Math.abs(clamped - fitScale) < 0.03;
+    }
+
+    this.updateMobileZoomUI();
+  }
+
+  updateMobileZoomUI() {
+    const labelEl = document.getElementById('mobile-zoom-label');
+    const btnFit = document.getElementById('btn-mobile-zoom-fit');
+    const pct = Math.round((this.mobileScale || 1) * 100);
+    if (labelEl) {
+      labelEl.textContent = pct + '%';
+    }
+    if (btnFit) {
+      if (this.isMobileFitActive) {
+        btnFit.classList.add('active-fit');
+        btnFit.innerHTML = '🔍 Tamanho 100%';
+      } else {
+        btnFit.classList.remove('active-fit');
+        btnFit.innerHTML = '🔍 Ajustar à tela';
+      }
+    }
+  }
+
+  measureAndSyncMobileColumnWidths() {
+    const viewport = document.getElementById('calendar-scroll-viewport');
+    if (!viewport) return;
+
+    const currentScale = this.mobileScale || 1;
+    let maxSlotNeededAtScale1 = 124;
+
+    const multiSlots = viewport.querySelectorAll('.slot-item.slot-turn-multi');
+    multiSlots.forEach(slotEl => {
+      let childrenWidth = 0;
+      const children = slotEl.children;
+      for (let i = 0; i < children.length; i++) {
+        childrenWidth += children[i].getBoundingClientRect().width / currentScale;
+      }
+      const gapsWidth = Math.max(0, children.length - 1) * 4;
+      const needed = childrenWidth + gapsWidth + 24;
+      if (needed > maxSlotNeededAtScale1) {
+        maxSlotNeededAtScale1 = needed;
+      }
+    });
+
+    const baseColPx = Math.max(124, Math.min(240, Math.ceil(maxSlotNeededAtScale1)));
+    this.mobileBaseColWidth = baseColPx;
+    viewport.style.setProperty('--mobile-base-col', baseColPx + 'px');
+
+    if (this.isMobileFitActive) {
+      const fitScale = this.computeMobileFitScale();
+      this.setMobileScale(fitScale, null, true);
+    } else {
+      this.updateMobileZoomUI();
+    }
+  }
+
+  scrollToTodayCard(smooth = true) {
+    const todayCell = document.querySelector('.calendar-day-cell.is-today');
+    if (!todayCell) return;
+    const viewport = document.getElementById('calendar-scroll-viewport');
+    if (viewport && window.innerWidth <= 932) {
+      const targetLeft = Math.max(0, todayCell.offsetLeft - ((viewport.clientWidth - todayCell.offsetWidth) / 2));
+      const targetTop = Math.max(0, todayCell.offsetTop - ((viewport.clientHeight - todayCell.offsetHeight) / 2));
+      viewport.scrollTo({
+        left: targetLeft,
+        top: targetTop,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    } else {
+      todayCell.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+    }
   }
 
   startRealtimeClock() {
@@ -2550,6 +2820,9 @@ class CalendarManager {
     this.currentYear = now.getFullYear();
     this.currentMonth = now.getMonth() + 1;
     this.render();
+    setTimeout(() => {
+      this.scrollToTodayCard(true);
+    }, 80);
   }
 
   getYearMonthKey() {
@@ -2998,6 +3271,12 @@ class CalendarManager {
       schedule = this.getEmptyMonthSchedule(this.currentYear, this.currentMonth);
     }
 
+    const scrollViewport = document.getElementById('calendar-scroll-viewport');
+    const prevScrollLeft = scrollViewport ? scrollViewport.scrollLeft : 0;
+    const prevScrollTop = scrollViewport ? scrollViewport.scrollTop : 0;
+    const isSameMonthRender = (this.lastRenderedYearMonthKey === yearMonthKey);
+    this.lastRenderedYearMonthKey = yearMonthKey;
+
     this.renderCalendarGrid(schedule);
     this.renderFilterOptions();
     this.renderMonthlyStats(schedule);
@@ -3024,6 +3303,30 @@ class CalendarManager {
     if (printableCal) {
       if (this.store.isAdmin()) printableCal.classList.add('admin-active');
       else printableCal.classList.remove('admin-active');
+    }
+
+    this.measureAndSyncMobileColumnWidths();
+
+    const hasWorkersLoaded = Boolean(
+      schedule &&
+      schedule.days &&
+      Object.values(schedule.days).some(d => (d.slots || []).some(s => (s.workers || []).length > 0))
+    );
+
+    if (!this.hasCompletedInitialTodayScroll) {
+      if (hasWorkersLoaded) this.hasCompletedInitialTodayScroll = true;
+      setTimeout(() => this.scrollToTodayCard(false), 30);
+    } else if (isSameMonthRender && scrollViewport && (prevScrollLeft > 0 || prevScrollTop > 0)) {
+      scrollViewport.scrollLeft = prevScrollLeft;
+      scrollViewport.scrollTop = prevScrollTop;
+    } else if (!isSameMonthRender && scrollViewport) {
+      const hasTodayInNewMonth = Boolean(document.querySelector('.calendar-day-cell.is-today'));
+      if (hasTodayInNewMonth) {
+        setTimeout(() => this.scrollToTodayCard(true), 50);
+      } else {
+        scrollViewport.scrollLeft = 0;
+        scrollViewport.scrollTop = 0;
+      }
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -6470,6 +6773,7 @@ class ExportManager {
         window.print();
         return;
       }
+      element.classList.add('is-exporting-capture');
       const canvas = await window.html2canvas(element, {
         scale: 2.5,
         useCORS: true,
@@ -6487,6 +6791,8 @@ class ExportManager {
     } catch (err) {
       console.error('Erro ao gerar imagem:', err);
       window.app?.showToast('Erro ao exportar imagem.', 'error');
+    } finally {
+      element.classList.remove('is-exporting-capture');
     }
   }
 
@@ -6501,6 +6807,7 @@ class ExportManager {
         window.print();
         return;
       }
+      element.classList.add('is-exporting-capture');
       const canvas = await window.html2canvas(element, {
         scale: 2.5,
         useCORS: true,
@@ -6532,6 +6839,8 @@ class ExportManager {
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       window.app?.showToast('Erro ao exportar PDF.', 'error');
+    } finally {
+      element.classList.remove('is-exporting-capture');
     }
   }
 }
